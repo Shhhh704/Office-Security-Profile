@@ -1999,7 +1999,7 @@ export default function App() {
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-text-title mb-4">应急资源</h3>
+                      <h3 className="text-base font-bold text-text-title mb-4 pt-7">应急资源</h3>
                       
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-3">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ShieldCheck, 
@@ -20,21 +21,23 @@ import {
   ExternalLink,
   Edit3,
   Search,
-  ArrowLeftRight
+  ArrowLeftRight,
+  ArrowLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // --- Types ---
 
-type TabType = 'safety' | 'rectification' | 'risk' | 'office';
+type TabType = 'overview' | 'safety' | 'rectification' | 'risk' | 'office';
 
 interface RectificationItem {
   id: string;
   type: string;
+  ticketNumber: string;
   status: 'red' | 'yellow' | 'green';
   analysis: string;
   solution: string;
-  progress: 'overdue' | 'pending' | 'public' | 'completed';
+  progress: 'overdue' | 'pending' | 'completed' | 'accepting';
   owner: string;
   planDate: string;
   finishDate?: string;
@@ -95,20 +98,25 @@ interface OfficeInfo {
   emergencyResources: EmergencyResources;
 }
 
+interface Workplace {
+  id: string;
+  name: string;
+  address: string;
+  area: string;
+  entranceCount: string;
+  workstations: string;
+}
+
 // --- Mock Data ---
 
 const SAFETY_RISK_TYPES: SafetyRiskType[] = [
   { id: 'entry', name: '出入风险', indicators: [
     { label: '无权限人员闯入次数：', value: '10次', status: 'green' },
-    { label: '闯入报警响应时效达标率：', value: '不达标', status: 'orange' }
+    { label: '闯入报警响应时效达标率：', value: '达标', status: 'green' }
   ]},
   { id: 'fire', name: '消防风险', indicators: [
     { label: '明火事件数量：', value: '0次', status: 'green' },
     { label: '工区消防手续是否完备：', value: '不完备', status: 'red' }
-  ]},
-  { id: 'personal', name: '人身安全风险', indicators: [
-    { label: '暴力事件数量：', value: '0次', status: 'green' },
-    { label: '医疗急救响应：', value: '100%', status: 'green' }
   ]},
   { id: 'disaster', name: '极端灾害风险', indicators: [
     { label: '气象预警响应：', value: '及时', status: 'green' },
@@ -133,7 +141,6 @@ const SAFETY_RISK_TYPES: SafetyRiskType[] = [
 ];
 
 const STABLE_RISKS = [
-  { id: 'personal', name: '人身安全风险', summary: '暴力/医疗事件 0', indicators: [{ label: '暴力事件数量：', value: '0次' }, { label: '医疗急救响应：', value: '100%' }] },
   { id: 'disaster', name: '极端灾害风险', summary: '气象/防汛 正常', indicators: [{ label: '气象预警响应：', value: '及时' }, { label: '防汛物资储备：', value: '充足' }] },
   { id: 'order', name: '办公秩序风险', summary: '吸烟/噪音 达标', indicators: [{ label: '违规吸烟举报：', value: '0次' }, { label: '办公区噪音达标：', value: '100%' }] },
   { id: 'property', name: '财产损失风险', summary: '资产/监控 正常', indicators: [{ label: '资产丢失报案：', value: '0次' }, { label: '监控覆盖完整率：', value: '100%' }] },
@@ -145,6 +152,7 @@ const RECTIFICATION_DATA: RectificationItem[] = [
   {
     id: '1',
     type: '出入风险',
+    ticketNumber: 'CR12566AC',
     status: 'red',
     analysis: '近期地铁改造导致出入口人流激增，安全管控压力增大',
     solution: '-',
@@ -156,6 +164,7 @@ const RECTIFICATION_DATA: RectificationItem[] = [
       {
         id: '1-1',
         type: '',
+        ticketNumber: 'CR12566AC-1',
         status: 'red',
         analysis: '早晚高峰期安保人员配置不足',
         solution: '协调外包保安公司，在早晚高峰时段增加2名安保人员，加强出入口管控',
@@ -167,6 +176,7 @@ const RECTIFICATION_DATA: RectificationItem[] = [
       {
         id: '1-2',
         type: '',
+        ticketNumber: 'CR12566AC-2',
         status: 'red',
         analysis: '现有闸机防尾随功能老化',
         solution: '联系供应商对A区、B区共6台主出入口闸机进行防尾随功能升级',
@@ -179,10 +189,11 @@ const RECTIFICATION_DATA: RectificationItem[] = [
   {
     id: '2',
     type: '消防风险',
+    ticketNumber: 'XF14577DX',
     status: 'yellow',
     analysis: '内部消防审计发现多处灭火器即将过期，存在安全隐患',
     solution: '-',
-    progress: 'public',
+    progress: 'accepting',
     owner: '-',
     planDate: '-',
     finishDate: '2026-03-08',
@@ -190,10 +201,11 @@ const RECTIFICATION_DATA: RectificationItem[] = [
       {
         id: '2-1',
         type: '',
+        ticketNumber: 'XF14577DX-1',
         status: 'yellow',
         analysis: '灭火器临期',
         solution: '采购并替换全园区共45具即将过期的灭火器，确保消防设备完好',
-        progress: 'public',
+        progress: 'accepting',
         owner: '陈欣',
         planDate: '2026-03-08',
         finishDate: '2026-03-08',
@@ -201,37 +213,14 @@ const RECTIFICATION_DATA: RectificationItem[] = [
       {
         id: '2-2',
         type: '',
+        ticketNumber: 'XF14577DX-2',
         status: 'yellow',
         analysis: 'C区通道杂物堆积',
         solution: '联合行政部门对C区通道进行全面清理，确保消防通道畅通',
-        progress: 'completed',
+        progress: 'accepting',
         owner: '李磊',
         planDate: '2026-03-05',
         finishDate: '2026-03-04',
-      }
-    ]
-  },
-  {
-    id: '3',
-    type: '客诉风险',
-    status: 'green',
-    analysis: '近期接到多起关于安保服务态度的投诉',
-    solution: '-',
-    progress: 'completed',
-    owner: '-',
-    planDate: '-',
-    finishDate: '2026-03-01',
-    children: [
-      {
-        id: '3-1',
-        type: '',
-        status: 'green',
-        analysis: '安保人员服务意识不足',
-        solution: '组织安保人员服务礼仪培训，提升服务意识和沟通能力',
-        progress: 'completed',
-        owner: '李天天',
-        planDate: '2026-03-01',
-        finishDate: '2026-02-28',
       }
     ]
   }
@@ -239,27 +228,18 @@ const RECTIFICATION_DATA: RectificationItem[] = [
 
 // --- Components ---
 
-const SidebarItem = ({ icon: Icon, label, active = false, collapsed = false }: { icon: any, label: string, active?: boolean, collapsed?: boolean }) => (
-  <div className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg cursor-pointer transition-all duration-200 mb-1 ${
-    active ? 'bg-primary/15 text-primary font-medium' : 'text-text-title hover:bg-black/5'
-  } ${collapsed ? 'justify-center px-2.5' : ''}`}>
-    <Icon size={20} className="shrink-0" />
-    {!collapsed && <span className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">{label}</span>}
-  </div>
-);
-
 const StatusBadge = ({ type }: { type: RectificationItem['progress'] }) => {
   const styles = {
     overdue: 'bg-red-50 text-red-600',
-    pending: 'bg-yellow-50 text-yellow-600',
-    public: 'bg-blue-50 text-blue-600',
+    pending: 'bg-blue-50 text-blue-600',
     completed: 'bg-green-50 text-green-600',
+    accepting: 'bg-purple-50 text-purple-600',
   };
   const labels = {
     overdue: '已逾期',
-    pending: '未完成',
-    public: '公示中',
+    pending: '进行中',
     completed: '已完成',
+    accepting: '验收中',
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${styles[type]}`}>
@@ -268,20 +248,82 @@ const StatusBadge = ({ type }: { type: RectificationItem['progress'] }) => {
   );
 };
 
+const getAggregatedProgress = (children: RectificationItem[]): RectificationItem['progress'] => {
+  const priority: Record<string, number> = {
+    'overdue': 4,
+    'pending': 3,
+    'accepting': 2,
+    'completed': 1
+  };
+  
+  let highestPriority = 0;
+  let aggregatedProgress: RectificationItem['progress'] = 'completed';
+  
+  children.forEach(child => {
+    const currentPriority = priority[child.progress] || 0;
+    if (currentPriority > highestPriority) {
+      highestPriority = currentPriority;
+      aggregatedProgress = child.progress;
+    }
+  });
+  
+  return aggregatedProgress;
+};
+
+const WORKPLACES: Workplace[] = [
+  {
+    id: 'dazhongsi',
+    name: '北京大钟寺广场',
+    address: '北京市海淀区北下关街道大钟寺广场',
+    area: '32,250',
+    entranceCount: '199',
+    workstations: '12,345'
+  },
+  {
+    id: 'shishangwanke',
+    name: '时尚万科中心',
+    address: '北京市朝阳区时尚万科中心',
+    area: '28,000',
+    entranceCount: '86',
+    workstations: '8,500'
+  }
+];
+
 export default function App() {
-  const [collapsed, setCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('safety');
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [activeRiskTab, setActiveRiskTab] = useState(0);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
-  const [expandedStableCards, setExpandedStableCards] = useState<string[]>([]);
+  const [showStableDetails, setShowStableDetails] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
   const [officeEditing, setOfficeEditing] = useState(false);
   const [hasEditPermission] = useState(true);
+  const [selectedRectificationFilter, setSelectedRectificationFilter] = useState<string | null>(null);
+  const [selectedRiskType, setSelectedRiskType] = useState<string | null>(null);
+  const [currentWorkplace, setCurrentWorkplace] = useState<Workplace>(WORKPLACES[0]);
+  const [isWorkplaceDrawerOpen, setIsWorkplaceDrawerOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isTaskDetailDrawerOpen, setIsTaskDetailDrawerOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<RectificationItem | null>(null);
+
+  useEffect(() => {
+    if (id) {
+      const workplace = WORKPLACES.find(w => w.id === id);
+      if (workplace) {
+        setCurrentWorkplace(workplace);
+      }
+    }
+  }, [id]);
+
+  useEffect(() => {
+    const rowsWithChildren = RECTIFICATION_DATA.filter(row => row.children && row.children.length > 0).map(row => row.id);
+    setExpandedRows(rowsWithChildren);
+  }, []);
 
   const [manualCalibrations, setManualCalibrations] = useState<Record<string, ManualCalibration>>({});
   const [isCalibrationDrawerOpen, setIsCalibrationDrawerOpen] = useState(false);
-  const [calibratingRiskTypeId, setCalibratingRiskTypeId] = useState<string>('');
-  const [calibratingIndicators, setCalibratingIndicators] = useState<SafetyIndicator[]>([]);
+  const [calibratingIndicatorsByType, setCalibratingIndicatorsByType] = useState<Record<string, SafetyIndicator[]>>({});
 
   const [officeInfo, setOfficeInfo] = useState<OfficeInfo>({
     builtYear: '2015',
@@ -323,30 +365,53 @@ export default function App() {
     let completed = 0;
     let pending = 0;
     let overdue = 0;
+    let accepting = 0;
     
     RECTIFICATION_DATA.forEach(item => {
       if (item.children) {
         item.children.forEach(child => {
           if (child.progress === 'completed') {
             completed++;
-          } else if (child.progress === 'pending' || child.progress === 'public') {
+          } else if (child.progress === 'pending') {
             pending++;
           } else if (child.progress === 'overdue') {
             overdue++;
+          } else if (child.progress === 'accepting') {
+            accepting++;
           }
         });
       }
     });
     
     return {
-      total: completed + pending + overdue,
+      total: completed + pending + overdue + accepting,
       completed,
       pending,
-      overdue
+      overdue,
+      accepting
     };
   };
 
+  const getLatestPlanDate = () => {
+    let latestDate = '';
+    
+    RECTIFICATION_DATA.forEach(item => {
+      if (item.children) {
+        item.children.forEach(child => {
+          if (child.planDate && child.planDate !== '-') {
+            if (!latestDate || child.planDate > latestDate) {
+              latestDate = child.planDate;
+            }
+          }
+        });
+      }
+    });
+    
+    return latestDate || '待定';
+  };
+
   const rectificationStats = calculateRectificationStats();
+  const overviewRef = useRef<HTMLDivElement>(null);
   const safetyRef = useRef<HTMLDivElement>(null);
   const rectificationRef = useRef<HTMLDivElement>(null);
   const riskRef = useRef<HTMLDivElement>(null);
@@ -403,18 +468,12 @@ export default function App() {
     setExpandedRows(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const toggleStableCard = (id: string) => {
-    setExpandedStableCards(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const openTaskDetail = (task: RectificationItem) => {
+    setSelectedTask(task);
+    setIsTaskDetailDrawerOpen(true);
   };
 
-  const toggleAllStableCards = () => {
-    const stableRiskTypes = SAFETY_RISK_TYPES.slice(2);
-    if (expandedStableCards.length === stableRiskTypes.length) {
-      setExpandedStableCards([]);
-    } else {
-      setExpandedStableCards(stableRiskTypes.map(r => r.id));
-    }
-  };
+
 
   const openRiskDrawer = (tabName: string) => {
     const data = riskAssessmentData[tabName];
@@ -455,30 +514,39 @@ export default function App() {
   };
 
   const openCalibrationDrawer = () => {
-    const firstRiskType = SAFETY_RISK_TYPES[0];
-    setCalibratingRiskTypeId(firstRiskType.id);
-    const existingCalibration = manualCalibrations[firstRiskType.id];
-    setCalibratingIndicators(existingCalibration 
-      ? [...existingCalibration.calibratedIndicators] 
-      : [...firstRiskType.indicators]);
+    const indicatorsByType: Record<string, SafetyIndicator[]> = {};
+    SAFETY_RISK_TYPES.forEach(riskType => {
+      const existingCalibration = manualCalibrations[riskType.id];
+      indicatorsByType[riskType.id] = existingCalibration 
+        ? [...existingCalibration.calibratedIndicators] 
+        : [...riskType.indicators];
+    });
+    setCalibratingIndicatorsByType(indicatorsByType);
     setIsCalibrationDrawerOpen(true);
   };
 
   const saveCalibration = () => {
-    setManualCalibrations(prev => ({
-      ...prev,
-      [calibratingRiskTypeId]: {
-        riskTypeId: calibratingRiskTypeId,
-        calibratedIndicators: calibratingIndicators,
-        calibratedAt: new Date().toLocaleString('zh-CN', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        }).replace(/\//g, '-')
+    const newCalibrations: Record<string, ManualCalibration> = { ...manualCalibrations };
+    const calibratedAt = new Date().toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).replace(/\//g, '-');
+    
+    SAFETY_RISK_TYPES.forEach(riskType => {
+      const indicators = calibratingIndicatorsByType[riskType.id];
+      if (indicators) {
+        newCalibrations[riskType.id] = {
+          riskTypeId: riskType.id,
+          calibratedIndicators: indicators,
+          calibratedAt
+        };
       }
-    }));
+    });
+    
+    setManualCalibrations(newCalibrations);
     setIsCalibrationDrawerOpen(false);
   };
 
@@ -492,27 +560,24 @@ export default function App() {
     }
   };
 
-  const switchCalibratingRiskType = (riskTypeId: string) => {
-    setCalibratingRiskTypeId(riskTypeId);
-    const existingCalibration = manualCalibrations[riskTypeId];
-    const riskType = SAFETY_RISK_TYPES.find(r => r.id === riskTypeId);
-    if (riskType) {
-      setCalibratingIndicators(existingCalibration 
-        ? [...existingCalibration.calibratedIndicators] 
-        : [...riskType.indicators]);
-    }
+
+
+  const updateIndicatorStatus = (riskTypeId: string, index: number, status: 'green' | 'orange' | 'red') => {
+    setCalibratingIndicatorsByType(prev => ({
+      ...prev,
+      [riskTypeId]: prev[riskTypeId].map((indicator, i) => 
+        i === index ? { ...indicator, status } : indicator
+      )
+    }));
   };
 
-  const updateIndicatorStatus = (index: number, status: 'green' | 'orange' | 'red') => {
-    setCalibratingIndicators(prev => prev.map((indicator, i) => 
-      i === index ? { ...indicator, status } : indicator
-    ));
-  };
-
-  const updateIndicatorValue = (index: number, value: string) => {
-    setCalibratingIndicators(prev => prev.map((indicator, i) => 
-      i === index ? { ...indicator, value } : indicator
-    ));
+  const updateIndicatorValue = (riskTypeId: string, index: number, value: string) => {
+    setCalibratingIndicatorsByType(prev => ({
+      ...prev,
+      [riskTypeId]: prev[riskTypeId].map((indicator, i) => 
+        i === index ? { ...indicator, value } : indicator
+      )
+    }));
   };
 
   const openOfficeDrawer = () => {
@@ -576,12 +641,69 @@ export default function App() {
 
   const scrollToSection = (section: TabType) => {
     setActiveTab(section);
-    const refs = { safety: safetyRef, rectification: rectificationRef, risk: riskRef, office: officeRef };
-    const target = refs[section]?.current;
+    const refs = { overview: overviewRef, rectification: rectificationRef, risk: riskRef, office: officeRef };
+    const target = refs[section as keyof typeof refs]?.current;
     if (target && contentRef.current) {
-      const offset = target.offsetTop - 120;
+      const offset = target.offsetTop - 200;
       contentRef.current.scrollTo({ top: offset, behavior: 'smooth' });
     }
+  };
+
+  const handleRectificationTypeClick = (type: string) => {
+    setSelectedRectificationFilter(type);
+    setActiveTab('rectification');
+    if (rectificationRef.current && contentRef.current) {
+      const offset = rectificationRef.current.offsetTop - 200;
+      contentRef.current.scrollTo({ top: offset, behavior: 'smooth' });
+    }
+  };
+
+  const getAvailableRiskTypes = () => {
+    const types = new Set<string>();
+    RECTIFICATION_DATA.forEach(item => {
+      if (item.type) types.add(item.type);
+      item.children?.forEach(child => {
+        if (child.type) types.add(child.type);
+      });
+    });
+    return Array.from(types);
+  };
+
+
+
+  const getFilteredRectificationData = () => {
+    return RECTIFICATION_DATA.map(row => {
+      let rowMatches = true;
+      let hasMatchingChildren = true;
+
+      if (selectedRectificationFilter) {
+        hasMatchingChildren = row.children?.some(child => child.progress === selectedRectificationFilter) ?? false;
+        rowMatches = row.progress === selectedRectificationFilter;
+      }
+
+      if (selectedRiskType) {
+        const childTypeMatches = row.children?.some(child => child.type === selectedRiskType) ?? false;
+        rowMatches = row.type === selectedRiskType || childTypeMatches;
+      }
+
+      if (rowMatches || hasMatchingChildren) {
+        let filteredChildren = row.children;
+        
+        if (selectedRectificationFilter) {
+          filteredChildren = filteredChildren?.filter(child => child.progress === selectedRectificationFilter);
+        }
+        
+        if (selectedRiskType) {
+          filteredChildren = filteredChildren?.filter(child => !child.type || child.type === selectedRiskType);
+        }
+
+        return {
+          ...row,
+          children: filteredChildren
+        };
+      }
+      return null;
+    }).filter(Boolean) as RectificationItem[];
   };
 
   useEffect(() => {
@@ -589,23 +711,25 @@ export default function App() {
       if (!contentRef.current) return;
       
       const scrollTop = contentRef.current.scrollTop;
-      const refs = { 
-        safety: safetyRef, 
-        rectification: rectificationRef, 
-        risk: riskRef, 
-        office: officeRef 
-      };
+      const refs = [
+        { key: 'overview', ref: overviewRef },
+        { key: 'rectification', ref: rectificationRef },
+        { key: 'risk', ref: riskRef },
+        { key: 'office', ref: officeRef }
+      ];
       
-      let currentSection: TabType = 'safety';
+      let currentSection: TabType = 'overview';
       
-      Object.entries(refs).forEach(([key, ref]) => {
+      for (let i = refs.length - 1; i >= 0; i--) {
+        const { key, ref } = refs[i];
         if (ref.current) {
-          const offsetTop = ref.current.offsetTop - 150;
+          const offsetTop = ref.current.offsetTop - 200;
           if (scrollTop >= offsetTop) {
             currentSection = key as TabType;
+            break;
           }
         }
-      });
+      }
       
       setActiveTab(currentSection);
     };
@@ -623,7 +747,24 @@ export default function App() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden font-sans">
+    <div className="flex flex-col h-screen overflow-hidden font-sans relative">
+      {/* Loading Overlay */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white/80 z-[100] flex items-center justify-center"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+              <p className="text-sm text-text-body">切换职场中...</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <header className="h-[52px] bg-bg-overlay border-b border-divider-light flex items-center px-3 shrink-0 gap-3 z-20">
         <div className="flex items-center gap-1.5">
@@ -638,473 +779,392 @@ export default function App() {
         <h1 className="text-[17px] font-semibold text-text-title tracking-tight">物理安全 Profile</h1>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <motion.nav 
-          animate={{ width: collapsed ? 72 : 180 }}
-          className="bg-bg-body border-r border-divider-light flex flex-col shrink-0 overflow-y-auto overflow-x-hidden"
-        >
-          <div className="flex-1 p-2">
-            <SidebarItem icon={LayoutDashboard} label="数据驾驶舱" collapsed={collapsed} />
-            <SidebarItem icon={ShieldCheck} label="安全档案" active collapsed={collapsed} />
-            <SidebarItem icon={ClipboardCheck} label="巡检管理" collapsed={collapsed} />
-            <SidebarItem icon={AlertTriangle} label="事件中心" collapsed={collapsed} />
-            <SidebarItem icon={BookOpen} label="规章制度" collapsed={collapsed} />
-            <SidebarItem icon={Users} label="人员管理" collapsed={collapsed} />
-            <SidebarItem icon={HardDrive} label="设备管理" collapsed={collapsed} />
-            <SidebarItem icon={LifeBuoy} label="应急预案" collapsed={collapsed} />
-          </div>
-          <div 
-            className="flex items-center gap-2 px-3.5 py-3 cursor-pointer text-text-caption hover:bg-black/5 transition-colors"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            <motion.div animate={{ rotate: collapsed ? 180 : 0 }}>
-              <ChevronLeft size={20} />
-            </motion.div>
-            {!collapsed && <span className="text-sm">收起</span>}
-          </div>
-        </motion.nav>
-
+      <div className="flex flex-1 overflow-hidden gap-0">
         {/* Main Content */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto bg-bg-body" ref={contentRef}>
+          <div className="flex-1 overflow-y-auto bg-bg-body" ref={contentRef} style={{ marginLeft: 0, paddingLeft: 0 }}>
             <div className="max-w-full pb-10">
-              {/* Hero Banner */}
-              <div className="relative rounded-xl mx-3 mt-3 border border-divider-light bg-bg-overlay">
-                
-                <div className="absolute right-4 top-4 text-text-placeholder text-xs flex items-center gap-1.5 z-10">
-                  更新时间 2025/2/3 23:59 (GMT+8)
-                </div>
-
-                <div className="relative z-10 p-4 flex gap-10 h-full flex-wrap lg:flex-nowrap">
-                  <div className="flex-1 min-w-[300px]">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h2 className="text-2xl font-semibold text-text-title">北京大钟寺广场</h2>
-                      <button className="inline-flex items-center gap-1.5 px-1.5 py-1.5 bg-white rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all">
-                        <ArrowLeftRight size={14} />
-                        切换职场
-                      </button>
-                    </div>
-                    
-                    <div className="flex flex-wrap items-center gap-y-2 mt-3">
-                      <div className="text-text-caption text-sm">
-                        地址：北京市海淀区北下关街道大钟寺广场
-                      </div>
-                      <div className="w-[1px] h-3 bg-divider mx-2" />
-                      <div className="text-text-caption text-sm">
-                        占地面积：32,250 ㎡
-                      </div>
-                      <div className="w-[1px] h-3 bg-divider mx-2" />
-                      <div className="text-text-caption text-sm">
-                        出入口数量：199 个
-                      </div>
-                      <div className="w-[1px] h-3 bg-divider mx-2" />
-                      <div className="text-text-caption text-sm">
-                        可用工位数：12,345 个
-                      </div>
-                    </div>
-
-                    <div className="flex gap-8 mt-4 pt-4 border-t border-divider" style={{borderTopWidth: '0.5px'}}>
-                      <div className="flex flex-col gap-1.5 w-32">
-                        <span className="text-sm text-text-caption">安全状态</span>
-                        <div className="flex items-center h-8">
-                          <span className="text-2xl font-semibold text-text-title">黄灯</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1.5 w-32">
-                        <span className="text-sm text-text-caption">持续安全天数</span>
-                        <div className="flex items-center gap-1 h-8">
-                          <span className="text-2xl font-semibold text-text-title">48</span>
-                          <span className="text-sm font-medium text-text-caption mt-1">天</span>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-[48px] flex-1">
-                        <div className="flex flex-col gap-1.5">
-                          <span className="text-sm text-text-caption">待整改事项</span>
-                          <div className="flex items-center gap-1 h-8">
-                            <span className="text-2xl font-semibold text-text-title">{rectificationStats.total}</span>
-                            <span className="text-sm font-medium text-text-caption mt-1">个</span>
-                          </div>
-                        </div>
-                        
-                        {/* Mini Donut */}
-                        <div className="flex items-center gap-3 pt-0.5">
-                          <div 
-                            className="relative w-12 h-12 cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => {
-                              scrollToSection('rectification');
-                              setTimeout(() => {
-                                setDropdownOpen('整改进度');
-                              }, 500);
-                            }}
-                          >
-                            <svg viewBox="0 0 36 36" className="rotate-[-90deg]">
-                              <circle cx="18" cy="18" r="14" fill="none" stroke="var(--color-divider-light)" strokeWidth="6" />
-                              <circle 
-                                cx="18" 
-                                cy="18" 
-                                r="14" 
-                                fill="none" 
-                                stroke="var(--color-status-green)" 
-                                strokeWidth="6" 
-                                strokeDasharray={`${(rectificationStats.completed / rectificationStats.total) * 88} 88`} 
-                                strokeLinecap="round" 
-                              />
-                              <circle 
-                                cx="18" 
-                                cy="18" 
-                                r="14" 
-                                fill="none" 
-                                stroke="var(--color-status-orange)" 
-                                strokeWidth="6" 
-                                strokeDasharray={`${(rectificationStats.pending / rectificationStats.total) * 88} 88`} 
-                                strokeDashoffset={`-${(rectificationStats.completed / rectificationStats.total) * 88}`} 
-                                strokeLinecap="round" 
-                              />
-                              <circle 
-                                cx="18" 
-                                cy="18" 
-                                r="14" 
-                                fill="none" 
-                                stroke="var(--color-status-grey)" 
-                                strokeWidth="6" 
-                                strokeDasharray={`${(rectificationStats.overdue / rectificationStats.total) * 88} 88`} 
-                                strokeDashoffset={`-${((rectificationStats.completed + rectificationStats.pending) / rectificationStats.total) * 88}`} 
-                                strokeLinecap="round" 
-                              />
-                            </svg>
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <div 
-                              className="flex items-center gap-1.5 text-[11px] text-text-caption cursor-pointer hover:text-text-body transition-colors"
-                              onClick={() => {
-                                scrollToSection('rectification');
-                                setTimeout(() => {
-                                  setDropdownOpen('整改进度');
-                                }, 500);
-                              }}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-status-green" /> 已整改 {rectificationStats.completed}
-                            </div>
-                            <div 
-                              className="flex items-center gap-1.5 text-[11px] text-text-caption cursor-pointer hover:text-text-body transition-colors"
-                              onClick={() => {
-                                scrollToSection('rectification');
-                                setTimeout(() => {
-                                  setDropdownOpen('整改进度');
-                                }, 500);
-                              }}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-status-orange" /> 待整改 {rectificationStats.pending}
-                            </div>
-                            <div 
-                              className="flex items-center gap-1.5 text-[11px] text-text-caption cursor-pointer hover:text-text-body transition-colors"
-                              onClick={() => {
-                                scrollToSection('rectification');
-                                setTimeout(() => {
-                                  setDropdownOpen('整改进度');
-                                }, 500);
-                              }}
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-status-grey" /> 已逾期 {rectificationStats.overdue}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Removed Rectification Completion Rate section */}
-                </div>
-              </div>
-
-              {/* Sticky Tabs */}
-              <div className="sticky top-0 z-10 bg-bg-body px-3 pt-3">
-                <div className="bg-bg-overlay rounded-xl border border-divider-light">
-                  <div className="flex px-4 gap-10">
-                    {(['safety', 'rectification', 'risk', 'office'] as TabType[]).map((tab) => (
-                      <div 
-                        key={tab}
-                        className={`relative py-3.5 text-base cursor-pointer transition-colors ${
-                          activeTab === tab ? 'text-primary font-semibold' : 'text-text-title'
-                        }`}
-                        onClick={() => scrollToSection(tab)}
-                      >
-                        <span>{tab === 'safety' ? '安全状态' : tab === 'rectification' ? '整改进度' : tab === 'risk' ? '风险评估' : '办公室信息'}</span>
-                        {activeTab === tab && (
-                          <motion.div 
-                            layoutId="activeTab"
-                            className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Cards Container */}
-              <div className="px-3 mt-3 flex flex-col gap-4">
-                {/* Safety Status Card */}
-                <section id="card-safety" ref={safetyRef} className="bg-bg-overlay rounded-xl border border-divider-light overflow-hidden">
-                  <div className="p-4 flex items-center justify-between">
-                    <h3 className="text-base font-medium text-text-title">安全状态</h3>
-                    <button onClick={openCalibrationDrawer} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="#1456F0"/>
-                        <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="#1456F0"/>
-                      </svg>
-                      校准
+              {/* Card 1: Workplace Info */}
+              <div className="relative border-b border-divider-light bg-white sticky top-0 z-40">
+                <div className="relative z-10 p-4 pb-0 max-w-[1000px] mx-auto">
+                  <div className="flex items-center gap-3 mb-2">
+                    <button
+                      onClick={() => navigate('/')}
+                      className="p-2 hover:bg-bg-overlay rounded-lg transition-colors"
+                    >
+                      <ArrowLeft size={20} className="text-text-body" />
+                    </button>
+                    <h2 className="font-semibold text-text-title" style={{ fontSize: '22px' }}>{currentWorkplace.name}</h2>
+                    <button 
+                      className="inline-flex items-center gap-1.5 px-1.5 py-1.5 bg-white rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all"
+                      onClick={() => setIsWorkplaceDrawerOpen(true)}
+                    >
+                      <ArrowLeftRight size={14} />
+                      切换职场
                     </button>
                   </div>
-                  <div className="px-4 pb-6">
-                    {/* Warning Group */}
-                    <div className="mb-5">
-                      <div className="flex items-center gap-2 mb-3">
-                        <AlertTriangle size={16} className="text-tag-orange-text" />
-                        <span className="text-sm font-semibold text-tag-orange-text">需要关注（2项）</span>
+                  
+                  <div className="flex flex-wrap items-center gap-y-2 mt-3">
+                    <div className="text-text-caption text-sm">
+                      地址：{currentWorkplace.address}
+                    </div>
+                    <div className="w-[1px] h-3 bg-divider mx-2" />
+                    <div className="text-text-caption text-sm">
+                      占地面积：{currentWorkplace.area} ㎡
+                    </div>
+                    <div className="w-[1px] h-3 bg-divider mx-2" />
+                    <div className="text-text-caption text-sm">
+                      出入口数量：{currentWorkplace.entranceCount} 个
+                    </div>
+                    <div className="w-[1px] h-3 bg-divider mx-2" />
+                    <div className="text-text-caption text-sm">
+                      可用工位数：{currentWorkplace.workstations} 个
+                    </div>
+                  </div>
+                  
+                  {/* Tabs */}
+                  <div className="mt-4">
+                    <div className="flex gap-10">
+                      {(['overview', 'rectification', 'risk', 'office'] as TabType[]).map((tab) => (
+                        <div 
+                          key={tab}
+                          className={`relative py-3.5 text-sm cursor-pointer transition-colors ${
+                            activeTab === tab ? 'text-primary font-medium' : 'text-text-title'
+                          }`}
+                          onClick={() => scrollToSection(tab)}
+                        >
+                          <span>{tab === 'overview' ? '安全概况' : tab === 'rectification' ? '整改进度' : tab === 'risk' ? '风险评估' : '职场信息'}</span>
+                          {activeTab === tab && (
+                            <motion.div 
+                              layoutId="activeTab"
+                              className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Safety Status & Rectification */}
+              <div id="card-overview" ref={overviewRef} className="relative rounded-xl mt-3 border border-divider-light bg-white max-w-[1000px] mx-auto">
+                <div className="relative">
+
+                  
+                  {/* Warning Card */}
+                  <div className="rounded-xl p-4 flex items-center relative" style={{ backgroundColor: '#FFFFFF', backgroundImage: 'url(/Vector-3226.png)', backgroundRepeat: 'no-repeat', backgroundPosition: 'left top', backgroundSize: 'auto', paddingBottom: '0px' }}>
+                    {/* Safety Overview */}
+                    <div className="flex-1 relative">
+                      <div className="flex items-center" style={{ alignItems: 'center', minHeight: '36px' }}>
+                        <svg 
+                          width="20" 
+                          height="20" 
+                          viewBox="0 0 20 20" 
+                          fill="none" 
+                          xmlns="http://www.w3.org/2000/svg"
+                          style={{ display: 'inline-flex', verticalAlign: 'middle' }}
+                        >
+                          <path d="M11.4435 1.66707C10.802 0.555963 9.1982 0.555962 8.5567 1.66707L0.618234 15.8337C-0.0232666 16.9448 0.778607 18.3337 2.06161 18.3337H17.9387C19.2217 18.3337 20.0236 16.9448 19.3821 15.8337L11.4435 1.66707ZM8.95833 6.875C8.95833 6.52982 9.23816 6.25 9.58333 6.25H10.4167C10.7618 6.25 11.0417 6.52982 11.0417 6.875V11.875C11.0417 12.2202 10.7618 12.5 10.4167 12.5H9.58333C9.23816 12.5 8.95833 12.2202 8.95833 11.875V6.875ZM8.95833 13.9583C8.95833 13.6132 9.23816 13.3333 9.58333 13.3333H10.4167C10.7618 13.3333 11.0417 13.6132 11.0417 13.9583V14.7917C11.0417 15.1368 10.7618 15.4167 10.4167 15.4167H9.58333C9.23816 15.4167 8.95833 15.1368 8.95833 14.7917V13.9583Z" fill="#F54A45"/>
+                        </svg>
+                        <span className="text-lg text-red-600" style={{ marginLeft: '8px', lineHeight: '1', verticalAlign: 'middle', fontWeight: '700' }}>红灯提醒，请关注以下风险</span>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Safety Status Section */}
+                  <div id="card-safety" ref={safetyRef} className="p-4">
+                    {/* Warning Group */}
+                    <div className="rounded-lg p-0 mb-7">
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {SAFETY_RISK_TYPES.slice(0, 2).map((riskType) => {
+                        {SAFETY_RISK_TYPES.slice(0, 2).map((riskType, index) => {
                           const calibration = manualCalibrations[riskType.id];
                           const indicators = calibration ? calibration.calibratedIndicators : riskType.indicators;
+                          const cardBgColor = 'bg-red-50';
+                          const cardBorderColor = 'border-red-300';
+                          const titleIconColor = 'text-red-600';
                           return (
-                            <div key={riskType.id} className="bg-bg-overlay border border-stroke-border rounded-xl p-4 hover:border-divider transition-colors">
-                              <div className="flex items-center justify-start gap-1.5 pb-2.5 mb-3 border-b border-divider-light">
-                                <span className="text-sm font-semibold text-text-title">{riskType.name}</span>
-                                {calibration && (
-                                  <span className="inline-flex items-center px-1.5 py-0.5 bg-tag-green-bg text-tag-green-text text-[10px] rounded-full">
-                                    人工校准
+                            <div key={riskType.id} className="rounded-xl overflow-hidden hover:opacity-90 transition-opacity border" style={{ borderColor: '#DEE0E3', borderWidth: '0.5px' }}>
+                              <div className="py-2 px-3">
+                                <div className="flex items-center gap-2">
+                                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="4" cy="4" r="4" fill="#E22E28"/>
+                                  </svg>
+                                  <span className="text-sm font-semibold text-red-600">
+                                    {riskType.name}{index === 0 && '（人工校准）'}
                                   </span>
-                                )}
+                                </div>
                               </div>
-                              <div className="flex flex-col gap-2">
-                                {indicators.map((indicator, idx) => {
-                                  const statusColor = indicator.status === 'green' ? 'text-tag-green-text' : indicator.status === 'orange' ? 'text-tag-orange-text' : 'text-red-600';
-                                  const StatusIcon = indicator.status === 'green' ? CheckCircle2 : AlertCircle;
-                                  return (
-                                    <div key={idx} className="flex items-center justify-between text-xs">
-                                      <span className="text-text-caption">{indicator.label}</span>
-                                      <div className="w-24 flex items-center gap-1.5">
-                                        <span className={`${statusColor} font-medium flex items-center gap-1.5`}>
-                                          <StatusIcon size={14} />
-                                          {indicator.value}
-                                        </span>
+                              <div className="bg-white p-3 pr-3">
+                                <div className="flex flex-col gap-2">
+                                  {indicators.map((indicator, idx) => {
+                                    return (
+                                      <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
+                                        <span className="text-text-caption flex-1">{indicator.label}</span>
+                                        <div className="flex items-center gap-2" style={{ paddingLeft: 0, paddingRight: 0, width: '60px' }}>
+                                          {indicator.status === 'green' ? (
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-tag-green-text">
+                                              <circle cx="12" cy="12" r="10"></circle>
+                                              <path d="m9 12 2 2 4-4"></path>
+                                            </svg>
+                                          ) : indicator.status === 'red' ? (
+                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                              <path d="M6.42188 1.41699C6.66252 1.00087 7.2406 0.974752 7.52344 1.33887L7.57617 1.41699L13.1299 11.3281L13.1748 11.418C13.3494 11.8453 13.0369 12.334 12.5557 12.334H1.44141C0.960349 12.3337 0.648549 11.8452 0.823242 11.418L0.864258 11.334L0.867188 11.3281L6.42188 1.41699Z" stroke="#E22E28"/>
+                                              <path d="M6.32812 5.03425C6.32812 4.812 6.50829 4.63184 6.73054 4.63184H7.26709C7.48934 4.63184 7.66951 4.812 7.66951 5.03425V8.25357C7.66951 8.47582 7.48934 8.65598 7.26709 8.65598H6.73054C6.50829 8.65598 6.32812 8.47582 6.32812 8.25357V5.03425Z" fill="#E22E28"/>
+                                              <path d="M6.32812 9.59495C6.32812 9.3727 6.50829 9.19254 6.73054 9.19254H7.26709C7.48934 9.19254 7.66951 9.3727 7.66951 9.59495V10.1315C7.66951 10.3538 7.48934 10.5339 7.26709 10.5339H6.73054C6.50829 10.5339 6.32812 10.3538 6.32812 10.1315V9.59495Z" fill="#E22E28"/>
+                                            </svg>
+                                          ) : (
+                                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                              <path d="M6.42188 1.41699C6.66252 1.00087 7.2406 0.974752 7.52344 1.33887L7.57617 1.41699L13.1299 11.3281L13.1748 11.418C13.3494 11.8453 13.0369 12.334 12.5557 12.334H1.44141C0.960349 12.3337 0.648549 11.8452 0.823242 11.418L0.864258 11.334L0.867188 11.3281L6.42188 1.41699Z" stroke="#E22E28"/>
+                                              <path d="M6.32812 5.03425C6.32812 4.812 6.50829 4.63184 6.73054 4.63184H7.26709C7.48934 4.63184 7.66951 4.812 7.66951 5.03425V8.25357C7.66951 8.47582 7.48934 8.65598 7.26709 8.65598H6.73054C6.50829 8.65598 6.32812 8.47582 6.32812 8.25357V5.03425Z" fill="#E22E28"/>
+                                              <path d="M6.32812 9.59495C6.32812 9.3727 6.50829 9.19254 6.73054 9.19254H7.26709C7.48934 9.19254 7.66951 9.3727 7.66951 9.59495V10.1315C7.66951 10.3538 7.48934 10.5339 7.26709 10.5339H6.73054C6.50829 10.5339 6.32812 10.3538 6.32812 10.1315V9.59495Z" fill="#E22E28"/>
+                                            </svg>
+                                          )}
+                                          <span className={indicator.status === 'green' ? 'text-tag-green-text font-medium' : indicator.status === 'orange' ? 'font-medium' : 'text-red-600 font-medium'} style={{ color: indicator.status === 'orange' ? '#E22E28' : undefined }}>
+                                            {indicator.value}
+                                          </span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                })}
+                                    );
+                                  })}
+                                </div>
                               </div>
+                              {(index === 0 || index === 2) && (
+                                <div className="bg-[#f8f9fa] p-3 border-t" style={{ borderColor: '#f3f4f6' }}>
+                                  <p className="text-xs text-text-caption">
+                                    校准原因：近期地铁改造,导致出入口人流激增,高峰期尾随情况加剧,但保安无法逐一甄别。
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
                       </div>
                     </div>
                     {/* Stable Group */}
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 size={16} className="text-tag-green-text" />
-                          <span className="text-sm font-semibold text-tag-green-text">运行平稳（6项）</span>
+                    <div className="rounded-lg p-0">
+                      <div className="flex items-center mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>其余5项指标运行平稳</span>
+                          <button 
+                            onClick={() => setShowStableDetails(!showStableDetails)}
+                            className="text-sm text-primary hover:underline font-medium flex items-center gap-1"
+                            style={{ marginLeft: '6px' }}
+                          >
+                            {showStableDetails ? '收起详情' : '查看详情'}
+                            <ChevronDown size={14} className={`transition-transform ${showStableDetails ? 'rotate-180' : ''}`} />
+                          </button>
                         </div>
-                        <button 
-                          onClick={toggleAllStableCards}
-                          className="text-xs text-text-body hover:underline font-medium"
-                        >
-                          {expandedStableCards.length === SAFETY_RISK_TYPES.slice(2).length ? '全部收起' : '全部展开'}
-                        </button>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
-                        {SAFETY_RISK_TYPES.slice(2).map(riskType => {
-                          const calibration = manualCalibrations[riskType.id];
-                          const indicators = calibration ? calibration.calibratedIndicators : riskType.indicators;
-                          const isExpanded = expandedStableCards.includes(riskType.id);
-                          return (
-                            <div 
-                              key={riskType.id} 
-                              className="bg-bg-overlay border border-stroke-border rounded-xl p-3 flex flex-col cursor-pointer hover:border-divider transition-all duration-200"
-                              onClick={() => toggleStableCard(riskType.id)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-medium text-text-title">{riskType.name}</span>
-                                      {calibration && (
-                                        <span className="inline-flex items-center px-1.5 py-0.5 bg-tag-green-bg text-tag-green-text text-[10px] rounded-full">
-                                          人工校准
+                      {showStableDetails && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start mt-3">
+                          {SAFETY_RISK_TYPES.slice(2).map(riskType => {
+                            const calibration = manualCalibrations[riskType.id];
+                            const indicators = calibration ? calibration.calibratedIndicators : riskType.indicators;
+                            return (
+                              <div 
+                                key={riskType.id} 
+                                className="bg-bg-overlay rounded-xl p-3 flex flex-col transition-all duration-200 border"
+                                style={{ borderColor: '#DEE0E3', borderWidth: '0.5px' }}
+                              >
+                                <div className="flex items-center">
+                                  <div className="flex flex-col gap-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-medium text-text-title">
+                                          {riskType.name}{calibration && '（人工校准）'}
                                         </span>
-                                      )}
-                                    </div>
-                                  {!isExpanded && (
-                                    <span className="text-[11px] text-text-caption flex items-center gap-1.5">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-tag-green-text"></span>
-                                      {indicators.map(i => i.value).join(' / ')}
-                                    </span>
-                                  )}
+                                      </div>
+                                  </div>
                                 </div>
-                                <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                                  <ChevronDown size={16} className="text-text-placeholder" />
-                                </motion.div>
+                                
+                                <div className="mt-3 flex flex-col gap-2">
+                                  {indicators.map((indicator, idx) => {
+                                    const statusColor = indicator.status === 'green' ? 'text-tag-green-text' : indicator.status === 'orange' ? 'text-tag-orange-text' : 'text-red-600';
+                                    const StatusIcon = indicator.status === 'green' ? CheckCircle2 : (indicator.status === 'orange' ? AlertCircle : null);
+                                    return (
+                                      <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
+                                        <span className="text-text-caption flex-1">{indicator.label}</span>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className={`${statusColor} font-medium flex items-center gap-1.5`} style={{ width: '60px' }}>
+                                            {indicator.status === 'green' ? (
+                                              <CheckCircle2 size={14} />
+                                            ) : indicator.status === 'red' ? (
+                                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M6.42188 1.41699C6.66252 1.00087 7.2406 0.974752 7.52344 1.33887L7.57617 1.41699L13.1299 11.3281L13.1748 11.418C13.3494 11.8453 13.0369 12.334 12.5557 12.334H1.44141C0.960349 12.3337 0.648549 11.8452 0.823242 11.418L0.864258 11.334L0.867188 11.3281L6.42188 1.41699Z" stroke="#E22E28"/>
+                                                <path d="M6.32812 5.03425C6.32812 4.812 6.50829 4.63184 6.73054 4.63184H7.26709C7.48934 4.63184 7.66951 4.812 7.66951 5.03425V8.25357C7.66951 8.47582 7.48934 8.65598 7.26709 8.65598H6.73054C6.50829 8.65598 6.32812 8.47582 6.32812 8.25357V5.03425Z" fill="#E22E28"/>
+                                                <path d="M6.32812 9.59495C6.32812 9.3727 6.50829 9.19254 6.73054 9.19254H7.26709C7.48934 9.19254 7.66951 9.3727 7.66951 9.59495V10.1315C7.66951 10.3538 7.48934 10.5339 7.26709 10.5339H6.73054C6.50829 10.5339 6.32812 10.3538 6.32812 10.1315V9.59495Z" fill="#E22E28"/>
+                                              </svg>
+                                            ) : (
+                                              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M6.42188 1.41699C6.66252 1.00087 7.2406 0.974752 7.52344 1.33887L7.57617 1.41699L13.1299 11.3281L13.1748 11.418C13.3494 11.8453 13.0369 12.334 12.5557 12.334H1.44141C0.960349 12.3337 0.648549 11.8452 0.823242 11.418L0.864258 11.334L0.867188 11.3281L6.42188 1.41699Z" stroke="#E22E28"/>
+                                                <path d="M6.32812 5.03425C6.32812 4.812 6.50829 4.63184 6.73054 4.63184H7.26709C7.48934 4.63184 7.66951 4.812 7.66951 5.03425V8.25357C7.66951 8.47582 7.48934 8.65598 7.26709 8.65598H6.73054C6.50829 8.65598 6.32812 8.47582 6.32812 8.25357V5.03425Z" fill="#E22E28"/>
+                                                <path d="M6.32812 9.59495C6.32812 9.3727 6.50829 9.19254 6.73054 9.19254H7.26709C7.48934 9.19254 7.66951 9.3727 7.66951 9.59495V10.1315C7.66951 10.3538 7.48934 10.5339 7.26709 10.5339H6.73054C6.50829 10.5339 6.32812 10.3538 6.32812 10.1315V9.59495Z" fill="#E22E28"/>
+                                              </svg>
+                                            )}
+                                            {indicator.value}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                              
-                              <AnimatePresence>
-                                {isExpanded && (
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="overflow-hidden"
-                                  >
-                                    <div className="pt-2.5 mt-2.5 border-t border-divider-light flex flex-col gap-2">
-                                      {indicators.map((indicator, idx) => {
-                                        const statusColor = indicator.status === 'green' ? 'text-tag-green-text' : indicator.status === 'orange' ? 'text-tag-orange-text' : 'text-red-600';
-                                        const StatusIcon = indicator.status === 'green' ? CheckCircle2 : AlertCircle;
-                                        return (
-                                          <div key={idx} className="flex items-center justify-between text-xs">
-                                            <span className="text-text-caption">{indicator.label}</span>
-                                            <div className="w-24 flex items-center gap-1.5">
-                                              <span className={`${statusColor} font-medium flex items-center gap-1.5`}>
-                                                <StatusIcon size={14} />
-                                                {indicator.value}
-                                              </span>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
-                </section>
+                </div>
+              </div>
 
+              {/* Cards Container */}
+              <div className="mt-3 flex flex-col gap-4 max-w-[1000px] mx-auto">
                 {/* Rectification Progress Card */}
                 <section id="card-rectification" ref={rectificationRef} className="bg-bg-overlay rounded-xl border border-divider-light overflow-hidden">
-                  <div className="pt-4 px-4 pb-0 flex items-center justify-between">
-                    <h3 className="text-base font-medium text-text-title">整改进度</h3>
+                  <div className="pt-4 px-4 pb-0">
+                    <h3 className="text-base font-medium text-text-title">整改任务</h3>
+                    <p className="text-sm text-text-body mt-1">整改计划完成时间：{getLatestPlanDate()}</p>
                   </div>
-                  
-                  {/* Rectification Goal */}
-                  <div className="mx-4 mt-4 p-4 border border-stroke-border rounded-xl">
-                    <h4 className="text-sm font-semibold text-text-title mb-2">整改目标</h4>
-                    <p className="text-sm text-text-body leading-relaxed">
-                      确保园区安全风险得到有效管控，通过系统性整改措施，将所有风险项的安全状态提升至绿灯水平。重点关注出入风险、消防风险和客诉风险三大核心领域，在2026年第二季度前完成全部整改任务，建立长效安全管理机制，保障园区人员和财产安全。
-                    </p>
-                  </div>
+                  {/* Status Tabs and Table Container */}
+                  <div className="mx-4 mt-4 mb-4">
+                    {/* Status Tabs - Segmented Controller */}
+                    <div className="bg-gray-100 p-1 flex rounded-lg">
+                      <button
+                        onClick={() => setSelectedRectificationFilter(null)}
+                        className={`flex-1 py-2 px-3 text-sm font-medium transition-all rounded-md ${
+                          !selectedRectificationFilter
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        全部
+                        <span className="ml-1 text-xs">{rectificationStats.total}</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedRectificationFilter('pending')}
+                        className={`flex-1 py-2 px-3 text-sm font-medium transition-all rounded-md ${
+                          selectedRectificationFilter === 'pending'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        进行中
+                        <span className="ml-1 text-xs">{rectificationStats.pending}</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedRectificationFilter('accepting')}
+                        className={`flex-1 py-2 px-3 text-sm font-medium transition-all rounded-md ${
+                          selectedRectificationFilter === 'accepting'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        验收中
+                        <span className="ml-1 text-xs">{rectificationStats.accepting}</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedRectificationFilter('completed')}
+                        className={`flex-1 py-2 px-3 text-sm font-medium transition-all rounded-md ${
+                          selectedRectificationFilter === 'completed'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        已完成
+                        <span className="ml-1 text-xs">{rectificationStats.completed}</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedRectificationFilter('overdue')}
+                        className={`flex-1 py-2 px-3 text-sm font-medium transition-all rounded-md ${
+                          selectedRectificationFilter === 'overdue'
+                            ? 'bg-white text-gray-900 shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        已逾期
+                        <span className={`ml-1 text-xs ${selectedRectificationFilter === 'overdue' ? 'text-red-600' : ''}`}>
+                          {rectificationStats.overdue}
+                        </span>
+                      </button>
+                    </div>
 
-                  {/* Filters */}
-                  <div className="px-4 py-3 flex flex-wrap items-center gap-3">
-                    {['风险类型', '安全状态', '整改进度'].map(filter => (
-                      <div key={filter} className="relative">
-                        <div 
-                          className={`flex items-center gap-1 px-3 py-1.5 border rounded-lg cursor-pointer transition-all min-w-[120px] ${
-                            dropdownOpen === filter ? 'border-primary text-text-body' : 'border-divider hover:border-text-placeholder'
-                          }`}
-                          onClick={() => setDropdownOpen(dropdownOpen === filter ? null : filter)}
-                        >
-                          <span className="text-sm flex-1">{filter}</span>
-                          <ChevronDown size={16} className={`transition-transform ${dropdownOpen === filter ? 'rotate-180' : ''}`} />
-                        </div>
-                        <AnimatePresence>
-                          {dropdownOpen === filter && (
-                            <motion.div 
-                              initial={{ opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 4 }}
-                              className="absolute top-full left-0 right-0 mt-1 bg-white border border-divider rounded-lg shadow-lg z-30 max-h-60 overflow-y-auto"
-                            >
-                              <div className="p-1">
-                                <div className="px-3 py-2 text-sm text-text-body bg-primary/10 rounded-lg cursor-pointer">不限</div>
-                                <div className="px-3 py-2 text-sm hover:bg-bg-content-base rounded-lg cursor-pointer">选项 1</div>
-                                <div className="px-3 py-2 text-sm hover:bg-bg-content-base rounded-lg cursor-pointer">选项 2</div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    ))}
-                    <button className="text-sm text-text-placeholder hover:text-text-body transition-colors">重置</button>
-                  </div>
-
-                  {/* Table */}
-                  <div className="px-4 pb-4">
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse whitespace-nowrap">
-                      <thead>
-                        <tr className="bg-bg-content-base border-b border-divider">
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">风险类型</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">安全状态</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">归因分析</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改方案</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改进度</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改责任人</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">计划完成时间</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改完成时间</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {RECTIFICATION_DATA.map(row => (
-                          <React.Fragment key={row.id}>
-                            <tr className="hover:bg-bg-content-base transition-colors border-b border-divider-light">
-                              <td className="px-4 py-3 text-sm text-text-body">
-                                <div className="flex items-center gap-2">
-                                  <button 
-                                    className={`w-5 h-5 flex items-center justify-center transition-transform ${expandedRows.includes(row.id) ? 'rotate-90' : ''}`}
-                                    onClick={() => toggleRow(row.id)}
+                    {/* Table */}
+                    <div className="mt-4 pb-4">
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse whitespace-nowrap">
+                        <thead>
+                          <tr className="border-b border-divider">
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">任务名称</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider" style={{ maxWidth: '200px' }}>归因分析</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider" style={{ maxWidth: '200px' }}>整改方案</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改状态</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改责任人</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">计划完成时间</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改完成时间</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getFilteredRectificationData().map(row => (
+                            <React.Fragment key={row.id}>
+                              <tr className="hover:bg-bg-content-base transition-colors border-b border-divider-light">
+                                <td className="px-4 py-3 text-sm text-text-body">
+                                  <div className="flex items-center gap-2">
+                                    <button 
+                                      className={`w-5 h-5 flex items-center justify-center transition-transform ${expandedRows.includes(row.id) || selectedRectificationFilter ? 'rotate-90' : ''}`}
+                                      onClick={() => toggleRow(row.id)}
+                                    >
+                                      <ChevronRight size={16} />
+                                    </button>
+                                    <button 
+                                      className="text-primary font-medium hover:underline"
+                                      onClick={() => openTaskDetail(row)}
+                                    >
+                                      {row.type}-{row.ticketNumber}
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-text-body" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.analysis}</td>
+                                <td className="px-4 py-3 text-sm text-text-body" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}></td>
+                                <td className="px-4 py-3 text-sm text-text-body">
+                                  {row.children && row.children.length > 0 ? (
+                                    <StatusBadge type={getAggregatedProgress(row.children)} />
+                                  ) : (
+                                    <StatusBadge type={row.progress} />
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-sm text-text-body"></td>
+                                <td className="px-4 py-3 text-sm text-text-body"></td>
+                                <td className="px-4 py-3 text-sm text-text-body"></td>
+                              </tr>
+                              <AnimatePresence>
+                                {(expandedRows.includes(row.id) || selectedRectificationFilter) && row.children?.map(child => (
+                                  <motion.tr 
+                                    key={child.id}
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="bg-bg-content-base/50 border-b border-divider-light"
                                   >
-                                    <ChevronRight size={16} />
-                                  </button>
-                                  {row.type}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-text-body">
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`w-2 h-2 rounded-full ${
-                                    row.status === 'red' ? 'bg-status-red' : row.status === 'yellow' ? 'bg-status-yellow' : 'bg-status-green'
-                                  }`} />
-                                  {row.status === 'red' ? '红灯' : row.status === 'yellow' ? '黄灯' : '绿灯'}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-text-body">{row.analysis}</td>
-                              <td className="px-4 py-3 text-sm text-text-body"></td>
-                              <td className="px-4 py-3 text-sm text-text-body"><StatusBadge type={row.progress} /></td>
-                              <td className="px-4 py-3 text-sm text-text-body"></td>
-                              <td className="px-4 py-3 text-sm text-text-body"></td>
-                              <td className="px-4 py-3 text-sm text-text-body">{row.finishDate || ''}</td>
-                              <td className="px-4 py-3 text-sm text-text-body"></td>
-                            </tr>
-                            <AnimatePresence>
-                              {expandedRows.includes(row.id) && row.children?.map(child => (
-                                <motion.tr 
-                                  key={child.id}
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: 'auto' }}
-                                  exit={{ opacity: 0, height: 0 }}
-                                  className="bg-bg-content-base/50 border-b border-divider-light"
-                                >
-                                  <td className="px-4 py-3 text-sm text-text-body pl-10"></td>
-                                  <td className="px-4 py-3 text-sm text-text-body"></td>
-                                  <td className="px-4 py-3 text-sm text-text-body">{child.analysis}</td>
-                                  <td className="px-4 py-3 text-sm text-text-body">{child.solution}</td>
-                                  <td className="px-4 py-3 text-sm text-text-body"><StatusBadge type={child.progress} /></td>
-                                  <td className="px-4 py-3 text-sm text-text-body">
-                                    <div className="flex items-center gap-1.5">
-                                      <Users size={14} className="text-text-caption" />
-                                      {child.owner}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-text-body cursor-pointer hover:text-primary">{child.planDate}</td>
-                                  <td className="px-4 py-3 text-sm text-text-body">{child.finishDate || '-'}</td>
-                                  <td className="px-4 py-3 text-sm">
-                                    <button className="text-primary font-medium hover:underline">查看详情</button>
-                                  </td>
+                                    <td className="px-4 py-3 text-sm text-text-body pl-10">
+                                      <button 
+                                        className="text-primary font-medium hover:underline"
+                                        onClick={() => openTaskDetail(child)}
+                                      >
+                                        {child.ticketNumber}
+                                      </button>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-text-body" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{child.analysis}</td>
+                                    <td className="px-4 py-3 text-sm text-text-body" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{child.solution}</td>
+                                    <td className="px-4 py-3 text-sm text-text-body"><StatusBadge type={child.progress} /></td>
+                                    <td className="px-4 py-3 text-sm text-text-body">
+                                      <div className="flex items-center gap-1.5">
+                                        <Users size={14} className="text-text-caption" />
+                                        {child.owner}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-text-body cursor-pointer hover:text-primary">{child.planDate}</td>
+                                    <td className="px-4 py-3 text-sm text-text-body">{child.finishDate || '-'}</td>
                                 </motion.tr>
                               ))}
                             </AnimatePresence>
@@ -1114,13 +1174,14 @@ export default function App() {
                     </table>
                   </div>
                 </div>
-              </section>
+                  </div>
+                </section>
 
                 {/* Risk Assessment Card */}
                 <section id="card-risk" ref={riskRef} className="bg-bg-overlay rounded-xl border border-divider-light overflow-hidden">
                   <div className="p-4 flex items-center justify-between">
                     <h3 className="text-base font-medium text-text-title">风险评估</h3>
-                    <button onClick={() => openRiskDrawer(riskTabs[activeRiskTab])} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all">
+                    <button onClick={() => openRiskDrawer(riskTabs[activeRiskTab])} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
                         <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="#1456F0"/>
                         <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="#1456F0"/>
@@ -1144,7 +1205,10 @@ export default function App() {
                       <span className="text-sm font-bold text-text-title">AI 总结</span>
                     </div>
                     <p className="text-sm text-text-body leading-relaxed">
-                      该园区存在三大安全风险：一是出入风险，园区由商场改建，出入口近 200 个，外部人员尾随误入频繁，已通过增设固定岗、闸机、监控探头及报警联动机制应对；二是客诉风险，因外墙 Logo 及地图标注为 "总部"，承接北京区域 53% 客诉量，极端闹访易引发舆情，已组建防暴队并配合警方分流引导处置；三是消防风险，外围设施距主楼较远，应急响应超 5 分钟，已前置 AED 和急救包、扩充持证急救人员并开展针对性培训。整体采用人防、技防、物防与管理机制四位一体防控。
+                      大钟寺办公区当前呈现开放园区与商业混合运营特征，整体风险主要集中在出入、消防、客诉和人身安全四类：出入口多且部分临近商业区，外部人员误入、尾随和强行闯入压力较高；高层带中庭、地下餐饮和车库充电场景并存，消防风险叠加、处置容错低；因外部被识别为 "总部"，客诉、滞留和舆情暴露相对突出；外围停车及接驳点分散，周边突发医疗事件响应时效仍偏弱。
+                    </p>
+                    <p className="text-sm text-text-body leading-relaxed mt-3">
+                      目前已形成人防、技防、联动处置并行的基础防护体系：出入侧配置门禁闸机、3472 路监控及固定岗 / 巡岗，客诉侧配有兼职客诉岗、防暴力量和舆情联动机制，消防侧具备 24 小时中控、微消队和较完整消防系统，SOS 侧已部署 AED/FAK 及持证急救安保。当前更需关注无值守及临商业出入口的持续补强，以及园区外围医疗响应效率提升。
                     </p>
                   </div>
 
@@ -1175,16 +1239,16 @@ export default function App() {
                         if (!data) return null;
                         return (
                           <div>
-                            <h4 className="text-base font-bold text-text-title mb-2">{data.name}</h4>
+                            <h4 className="text-base font-medium text-text-title mb-2">{data.name}</h4>
                             <p className="text-sm text-text-caption mb-6">更新时间：{data.updateTime}</p>
 
                             <div className="mb-8">
-                              <h5 className="text-sm font-bold text-text-title mb-3">风险特征</h5>
+                              <h5 className="text-sm font-medium text-text-title mb-3">风险特征</h5>
                               <div dangerouslySetInnerHTML={{ __html: data.riskFeatures }} />
                             </div>
 
                             <div>
-                              <h5 className="text-sm font-bold text-text-title mb-3">防护手段</h5>
+                              <h5 className="text-sm font-medium text-text-title mb-3">防护手段</h5>
                               <div dangerouslySetInnerHTML={{ __html: data.protectionMeasures }} />
                             </div>
                           </div>
@@ -1198,11 +1262,11 @@ export default function App() {
                 <section id="card-office" ref={officeRef} className="bg-bg-overlay rounded-xl border border-divider-light overflow-hidden">
                   <div className="p-5">
                     <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-base font-medium text-text-title">办公室信息</h3>
+                      <h3 className="text-base font-medium text-text-title">职场信息</h3>
                       {hasEditPermission && (
                         <button 
                           onClick={openOfficeDrawer}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
                             <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="#1456F0"/>
@@ -1213,12 +1277,12 @@ export default function App() {
                       )}
                     </div>
                     
-                    <div className="mb-6">
-                      <h4 className="text-sm font-bold text-text-title mb-4">基础信息</h4>
+                    <div className="mb-7">
+                      <h4 className="text-sm font-medium text-text-title mb-4">基础信息</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div className="space-y-4">
                           <div>
-                            <p className="text-sm text-text-caption mb-1">办公室建成年份</p>
+                            <p className="text-sm text-text-caption mb-1">建成年份</p>
                             <p className="text-sm text-text-title">{officeInfo.builtYear} 年建成</p>
                           </div>
                           <div>
@@ -1267,8 +1331,8 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="mb-6">
-                      <h4 className="text-sm font-bold text-text-title mb-4">人员分布</h4>
+                    <div className="mb-7">
+                      <h4 className="text-sm font-medium text-text-title mb-4">人员分布</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div>
                           <p className="text-sm text-text-caption mb-1">可用工位数</p>
@@ -1297,8 +1361,8 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="mb-6">
-                      <h4 className="text-sm font-bold text-text-title mb-4">特殊空间</h4>
+                    <div className="mb-7">
+                      <h4 className="text-sm font-medium text-text-title mb-4">特殊空间</h4>
                       <div className="flex flex-wrap gap-2">
                         {['KP区域', '实验室', 'EMDF机房', 'IDF机房', '开火厨房', '储藏室'].map((tag, idx) => (
                           <span key={idx} className="px-3 py-1 bg-primary/10 text-text-body rounded-full text-xs font-medium">
@@ -1316,10 +1380,10 @@ export default function App() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                           {officeInfo.emergencyResources.fireStations.map(station => (
                             <div key={station.id} className="border border-divider-light rounded-lg overflow-hidden">
-                              <div className="bg-bg-content-base px-4 py-3 border-b border-divider-light">
+                              <div className="bg-bg-content-base px-3 py-3 border-b border-divider-light">
                                 <h6 className="text-sm font-bold text-text-title">{station.name}</h6>
                               </div>
-                              <div className="p-4 space-y-2">
+                              <div className="p-3 space-y-2">
                                 <div className="flex items-start gap-2">
                                   <span className="text-sm text-text-caption shrink-0">距离：</span>
                                   <span className="text-sm text-text-body">{station.distance} km</span>
@@ -1345,12 +1409,12 @@ export default function App() {
                       <div className="mb-6">
                         <h5 className="text-sm font-medium text-text-title mb-3">周边医院</h5>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                          {officeInfo.emergencyResources.hospitals.map(hospital => (
+                          {officeInfo.emergencyResources.hospitals.slice(0, 3).map(hospital => (
                             <div key={hospital.id} className="border border-divider-light rounded-lg overflow-hidden">
-                              <div className="bg-bg-content-base px-4 py-3 border-b border-divider-light">
+                              <div className="bg-bg-content-base px-3 py-3 border-b border-divider-light">
                                 <h6 className="text-sm font-bold text-text-title">{hospital.name}</h6>
                               </div>
-                              <div className="p-4 space-y-2">
+                              <div className="p-3 space-y-2">
                                 <div className="flex items-start gap-2">
                                   <span className="text-sm text-text-caption shrink-0">距离：</span>
                                   <span className="text-sm text-text-body">{hospital.distance} km</span>
@@ -1376,12 +1440,12 @@ export default function App() {
                       <div>
                         <h5 className="text-sm font-medium text-text-title mb-3">周边派出所</h5>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                          {officeInfo.emergencyResources.policeStations.map(station => (
+                          {officeInfo.emergencyResources.policeStations.slice(0, 2).map(station => (
                             <div key={station.id} className="border border-divider-light rounded-lg overflow-hidden">
-                              <div className="bg-bg-content-base px-4 py-3 border-b border-divider-light">
+                              <div className="bg-bg-content-base px-3 py-3 border-b border-divider-light">
                                 <h6 className="text-sm font-bold text-text-title">{station.name}</h6>
                               </div>
-                              <div className="p-4 space-y-2">
+                              <div className="p-3 space-y-2">
                                 <div className="flex items-start gap-2">
                                   <span className="text-sm text-text-caption shrink-0">距离：</span>
                                   <span className="text-sm text-text-body">{station.distance} km</span>
@@ -1692,115 +1756,96 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="p-4 border-b border-divider-light">
-                  <label className="text-sm font-medium text-text-title mb-2 block">选择风险类型</label>
-                  <div className="flex flex-wrap gap-2">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="space-y-6">
                     {SAFETY_RISK_TYPES.map((riskType) => {
-                      const hasCalibration = !!manualCalibrations[riskType.id];
+                      const currentCalibration = manualCalibrations[riskType.id];
+                      const indicators = calibratingIndicatorsByType[riskType.id] || [];
+                      
                       return (
-                        <button
-                          key={riskType.id}
-                          onClick={() => switchCalibratingRiskType(riskType.id)}
-                          className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                            calibratingRiskTypeId === riskType.id
-                              ? 'bg-primary text-white border-primary'
-                              : 'bg-white text-text-body border-divider-light hover:border-primary/50'
-                          }`}
-                        >
-                          <span className="flex items-center gap-1.5">
-                            {riskType.name}
-                            {hasCalibration && (
+                        <div key={riskType.id} className="space-y-4">
+                          {currentCalibration && (
+                            <div className="p-3 bg-tag-green-bg/30 border border-tag-green-bg rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center px-2 py-0.5 bg-tag-green-bg text-tag-green-text text-xs rounded-full">
+                                    人工校准
+                                  </span>
+                                  <span className="text-xs text-text-caption">校准时间：{currentCalibration.calibratedAt}</span>
+                                </div>
+                                <button
+                                  onClick={() => deleteCalibration(riskType.id)}
+                                  className="text-xs text-red-500 hover:text-red-600 transition-colors"
+                                >
+                                  删除校准
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base font-bold text-text-title">
+                              {riskType.name}
+                            </h3>
+                            {currentCalibration && (
                               <span className="inline-flex items-center px-1.5 py-0.5 bg-tag-green-bg text-tag-green-text text-[10px] rounded-full">
                                 人工校准
                               </span>
                             )}
-                          </span>
-                        </button>
+                          </div>
+                          
+                          <div className="space-y-3">
+                            {indicators.map((indicator, index) => (
+                              <div key={index} className="p-4 bg-bg-content-base rounded-lg border border-divider-light">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="text-sm font-medium text-text-title">{indicator.label}</span>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => updateIndicatorStatus(riskType.id, index, 'green')}
+                                      className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
+                                        indicator.status === 'green'
+                                          ? 'bg-status-green border-status-green'
+                                          : 'bg-white border-divider-light hover:border-status-green'
+                                      }`}
+                                    >
+                                      {indicator.status === 'green' && <CheckCircle2 size={16} className="text-white" />}
+                                    </button>
+                                    <button
+                                      onClick={() => updateIndicatorStatus(riskType.id, index, 'orange')}
+                                      className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
+                                        indicator.status === 'orange'
+                                          ? 'bg-status-orange border-status-orange'
+                                          : 'bg-white border-divider-light hover:border-status-orange'
+                                      }`}
+                                    >
+                                      {indicator.status === 'orange' && <AlertCircle size={16} className="text-white" />}
+                                    </button>
+                                    <button
+                                      onClick={() => updateIndicatorStatus(riskType.id, index, 'red')}
+                                      className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
+                                        indicator.status === 'red'
+                                          ? 'bg-status-red border-status-red'
+                                          : 'bg-white border-divider-light hover:border-status-red'
+                                      }`}
+                                    >
+                                      {indicator.status === 'red' && <AlertCircle size={16} className="text-white" />}
+                                    </button>
+                                  </div>
+                                </div>
+                                <input
+                                  type="text"
+                                  value={indicator.value}
+                                  onChange={(e) => updateIndicatorValue(riskType.id, index, e.target.value)}
+                                  className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                  placeholder="输入指标值"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4">
-                  {(() => {
-                    const currentCalibration = manualCalibrations[calibratingRiskTypeId];
-                    const currentRiskType = SAFETY_RISK_TYPES.find(r => r.id === calibratingRiskTypeId);
-                    return (
-                      <div className="space-y-4">
-                        {currentCalibration && (
-                          <div className="p-3 bg-tag-green-bg/30 border border-tag-green-bg rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="inline-flex items-center px-2 py-0.5 bg-tag-green-bg text-tag-green-text text-xs rounded-full">
-                                  人工校准
-                                </span>
-                                <span className="text-xs text-text-caption">校准时间：{currentCalibration.calibratedAt}</span>
-                              </div>
-                              <button
-                                onClick={() => deleteCalibration(calibratingRiskTypeId)}
-                                className="text-xs text-red-500 hover:text-red-600 transition-colors"
-                              >
-                                删除校准
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        
-                        <h3 className="text-base font-bold text-text-title">
-                          {currentRiskType?.name}
-                        </h3>
-                        
-                        <div className="space-y-3">
-                          {calibratingIndicators.map((indicator, index) => (
-                            <div key={index} className="p-4 bg-bg-content-base rounded-lg border border-divider-light">
-                              <div className="flex items-center justify-between mb-3">
-                                <span className="text-sm font-medium text-text-title">{indicator.label}</span>
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() => updateIndicatorStatus(index, 'green')}
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
-                                      indicator.status === 'green'
-                                        ? 'bg-status-green border-status-green'
-                                        : 'bg-white border-divider-light hover:border-status-green'
-                                    }`}
-                                  >
-                                    {indicator.status === 'green' && <CheckCircle2 size={16} className="text-white" />}
-                                  </button>
-                                  <button
-                                    onClick={() => updateIndicatorStatus(index, 'orange')}
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
-                                      indicator.status === 'orange'
-                                        ? 'bg-status-orange border-status-orange'
-                                        : 'bg-white border-divider-light hover:border-status-orange'
-                                    }`}
-                                  >
-                                    {indicator.status === 'orange' && <AlertCircle size={16} className="text-white" />}
-                                  </button>
-                                  <button
-                                    onClick={() => updateIndicatorStatus(index, 'red')}
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${
-                                      indicator.status === 'red'
-                                        ? 'bg-status-red border-status-red'
-                                        : 'bg-white border-divider-light hover:border-status-red'
-                                    }`}
-                                  >
-                                    {indicator.status === 'red' && <AlertCircle size={16} className="text-white" />}
-                                  </button>
-                                </div>
-                              </div>
-                              <input
-                                type="text"
-                                value={indicator.value}
-                                onChange={(e) => updateIndicatorValue(index, e.target.value)}
-                                className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                placeholder="输入指标值"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
                 </div>
               </motion.div>
             </>
@@ -1826,7 +1871,7 @@ export default function App() {
                 className="fixed right-0 top-0 h-full w-full sm:w-[600px] bg-bg-overlay z-50 shadow-xl flex flex-col"
               >
                 <div className="flex items-center justify-between p-4 border-b border-divider-light">
-                  <h2 className="text-lg font-bold text-text-title">编辑办公室信息</h2>
+                  <h2 className="text-lg font-bold text-text-title">编辑职场信息</h2>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setIsOfficeDrawerOpen(false)}
@@ -1844,11 +1889,11 @@ export default function App() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4">
-                  <div className="mb-6">
+                  <div className="mb-7">
                     <h3 className="text-base font-bold text-text-title mb-4">基础信息</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">办公室建成年份</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">建成年份</label>
                         <input
                           type="text"
                           value={editingOfficeInfo.builtYear}
@@ -2206,6 +2251,208 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Workplace Switch Drawer */}
+        <AnimatePresence>
+          {isWorkplaceDrawerOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsWorkplaceDrawerOpen(false)}
+                className="fixed inset-0 bg-black/50 z-50"
+              />
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed right-0 top-0 bottom-0 w-full max-w-[600px] bg-white z-50 shadow-2xl"
+              >
+                <div className="flex items-center justify-between p-4 border-b border-divider">
+                  <h3 className="text-lg font-semibold text-text-title">切换职场</h3>
+                  <button
+                    onClick={() => setIsWorkplaceDrawerOpen(false)}
+                    className="p-2 hover:bg-bg-content-base rounded-lg transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 6 6 18"></path>
+                      <path d="m6 6 12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                <div className="p-4 overflow-y-auto">
+                  <div className="space-y-3">
+                    {WORKPLACES.map(workplace => (
+                      <div
+                        key={workplace.id}
+                        onClick={() => {
+                          setIsLoading(true);
+                          setIsWorkplaceDrawerOpen(false);
+                          setTimeout(() => {
+                            setCurrentWorkplace(workplace);
+                            setIsLoading(false);
+                          }, 1000);
+                        }}
+                        className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                          currentWorkplace.id === workplace.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-divider-light hover:border-primary/50 hover:bg-bg-content-base'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-text-title">{workplace.name}</h4>
+                          {currentWorkplace.id === workplace.id && (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1456F0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M20 6 9 17l-5-5"></path>
+                            </svg>
+                          )}
+                        </div>
+                        <p className="text-sm text-text-caption mb-2">地址：{workplace.address}</p>
+                        <div className="flex flex-wrap gap-3 text-xs text-text-caption">
+                          <span>占地面积：{workplace.area} ㎡</span>
+                          <span>出入口：{workplace.entranceCount} 个</span>
+                          <span>工位数：{workplace.workstations} 个</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* 任务详情抽屉 */}
+        <AnimatePresence>
+          {isTaskDetailDrawerOpen && selectedTask && (
+            <>
+              {/* 遮罩层 */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsTaskDetailDrawerOpen(false)}
+                className="fixed inset-0 bg-black/50 z-50"
+              />
+              {/* 抽屉内容 */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed right-0 top-0 h-full w-[500px] bg-white shadow-2xl z-50 flex flex-col"
+              >
+                {/* 抽屉头部 */}
+                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                  <h2 className="text-xl font-semibold text-gray-900">任务详情</h2>
+                  <button
+                    onClick={() => setIsTaskDetailDrawerOpen(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 6 6 18"></path>
+                      <path d="m6 6 12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                {/* 抽屉内容 */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {/* 基本信息 */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-500">工单号</span>
+                      <span className="text-sm text-gray-900 font-mono">{selectedTask.ticketNumber}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-500">风险类型</span>
+                      <span className="text-sm text-gray-900">{selectedTask.type || '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-500">状态</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-block w-2 h-2 rounded-full ${
+                          selectedTask.status === 'red' ? 'bg-red-500' :
+                          selectedTask.status === 'yellow' ? 'bg-yellow-500' : 'bg-green-500'
+                        }`}></span>
+                        <StatusBadge type={selectedTask.progress} />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-500">负责人</span>
+                      <span className="text-sm text-gray-900">{selectedTask.owner || '-'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-500">计划完成日期</span>
+                      <span className="text-sm text-gray-900">{selectedTask.planDate || '-'}</span>
+                    </div>
+                    {selectedTask.finishDate && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-500">实际完成日期</span>
+                        <span className="text-sm text-gray-900">{selectedTask.finishDate}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <hr className="border-gray-200" />
+
+                  {/* 问题分析 */}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-medium text-gray-900">问题分析</h3>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-700">{selectedTask.analysis}</p>
+                    </div>
+                  </div>
+
+                  {/* 解决方案 */}
+                  {selectedTask.solution && selectedTask.solution !== '-' && (
+                    <>
+                      <hr className="border-gray-200" />
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-medium text-gray-900">解决方案</h3>
+                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                          <p className="text-sm text-gray-700">{selectedTask.solution}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 子任务 */}
+                  {selectedTask.children && selectedTask.children.length > 0 && (
+                    <>
+                      <hr className="border-gray-200" />
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-medium text-gray-900">子任务</h3>
+                        <div className="space-y-3">
+                          {selectedTask.children.map((child) => (
+                            <div key={child.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-900">{child.ticketNumber}</span>
+                                <StatusBadge type={child.progress} />
+                              </div>
+                              <p className="text-sm text-gray-600">{child.analysis}</p>
+                              {child.solution && child.solution !== '-' && (
+                                <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+                                  <span className="font-medium">方案：</span>{child.solution}
+                                </div>
+                              )}
+                              <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                                <span>负责人：{child.owner || '-'}</span>
+                                {child.planDate && <span>计划：{child.planDate}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </motion.div>
             </>

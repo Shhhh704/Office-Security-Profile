@@ -67,6 +67,7 @@ interface ManualCalibration {
   riskTypeId: string;
   calibratedStatus: 'green' | 'orange' | 'red';
   calibratedIndicators: SafetyIndicator[];
+  calibratedReason: string;
   calibratedAt: string;
 }
 
@@ -326,6 +327,7 @@ export default function App() {
   const [isCalibrationDrawerOpen, setIsCalibrationDrawerOpen] = useState(false);
   const [calibratingIndicatorsByType, setCalibratingIndicatorsByType] = useState<Record<string, SafetyIndicator[]>>({});
   const [calibratingStatusByType, setCalibratingStatusByType] = useState<Record<string, 'green' | 'orange' | 'red'>>({});
+  const [calibratingReasonByType, setCalibratingReasonByType] = useState<Record<string, string>>({});
 
   const [officeInfo, setOfficeInfo] = useState<OfficeInfo>({
     builtYear: '2015',
@@ -518,6 +520,7 @@ export default function App() {
   const openCalibrationDrawer = () => {
     const indicatorsByType: Record<string, SafetyIndicator[]> = {};
     const statusByType: Record<string, 'green' | 'orange' | 'red'> = {};
+    const reasonByType: Record<string, string> = {};
     SAFETY_RISK_TYPES.forEach(riskType => {
       const existingCalibration = manualCalibrations[riskType.id];
       indicatorsByType[riskType.id] = existingCalibration 
@@ -526,14 +529,17 @@ export default function App() {
       
       if (existingCalibration) {
         statusByType[riskType.id] = existingCalibration.calibratedStatus;
+        reasonByType[riskType.id] = existingCalibration.calibratedReason || '';
       } else {
         const hasRed = riskType.indicators.some(i => i.status === 'red');
         const hasOrange = riskType.indicators.some(i => i.status === 'orange');
         statusByType[riskType.id] = hasRed ? 'red' : hasOrange ? 'orange' : 'green';
+        reasonByType[riskType.id] = '';
       }
     });
     setCalibratingIndicatorsByType(indicatorsByType);
     setCalibratingStatusByType(statusByType);
+    setCalibratingReasonByType(reasonByType);
     setIsCalibrationDrawerOpen(true);
   };
 
@@ -550,11 +556,13 @@ export default function App() {
     SAFETY_RISK_TYPES.forEach(riskType => {
       const indicators = calibratingIndicatorsByType[riskType.id];
       const status = calibratingStatusByType[riskType.id];
+      const reason = calibratingReasonByType[riskType.id] || '';
       if (indicators && status) {
         newCalibrations[riskType.id] = {
           riskTypeId: riskType.id,
           calibratedStatus: status,
           calibratedIndicators: indicators,
+          calibratedReason: reason,
           calibratedAt
         };
       }
@@ -578,6 +586,13 @@ export default function App() {
     setCalibratingStatusByType(prev => ({
       ...prev,
       [riskTypeId]: status
+    }));
+  };
+
+  const updateCalibrationReason = (riskTypeId: string, reason: string) => {
+    setCalibratingReasonByType(prev => ({
+      ...prev,
+      [riskTypeId]: reason
     }));
   };
 
@@ -1796,6 +1811,7 @@ export default function App() {
                       {SAFETY_RISK_TYPES.map((riskType) => {
                         const currentCalibration = manualCalibrations[riskType.id];
                         const status = calibratingStatusByType[riskType.id] || 'green';
+                        const reason = calibratingReasonByType[riskType.id] || '';
                         const indicators = calibratingIndicatorsByType[riskType.id] || [];
                         
                         const statusColor = status === 'red' ? '#E22E28' : status === 'orange' ? '#E8921C' : '#34A853';
@@ -1868,6 +1884,24 @@ export default function App() {
                               </div>
                             </div>
                             <div className="bg-white p-3 pr-3">
+                              <div className="mb-3">
+                                <label className="text-xs font-medium text-text-title mb-1 block">校准理由</label>
+                                <textarea
+                                  value={reason}
+                                  onChange={(e) => updateCalibrationReason(riskType.id, e.target.value)}
+                                  className="w-full px-2 py-1.5 border border-divider-light rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                                  placeholder="请输入校准理由..."
+                                  rows={2}
+                                />
+                              </div>
+                              {currentCalibration && currentCalibration.calibratedReason && (
+                                <div className="mb-3 p-2 bg-tag-green-bg/20 rounded-lg">
+                                  <p className="text-xs text-text-caption">
+                                    <span className="font-medium text-tag-green-text">已保存的理由：</span>
+                                    {currentCalibration.calibratedReason}
+                                  </p>
+                                </div>
+                              )}
                               <div className="flex flex-col gap-2">
                                 {indicators.map((indicator, idx) => {
                                   return (

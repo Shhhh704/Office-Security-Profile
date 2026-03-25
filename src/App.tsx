@@ -327,6 +327,7 @@ export default function App() {
   const [isCalibrationDrawerOpen, setIsCalibrationDrawerOpen] = useState(false);
   const [calibratingIndicatorsByType, setCalibratingIndicatorsByType] = useState<Record<string, SafetyIndicator[]>>({});
   const [calibratingStatusByType, setCalibratingStatusByType] = useState<Record<string, 'green' | 'orange' | 'red'>>({});
+  const [originalStatusByType, setOriginalStatusByType] = useState<Record<string, 'green' | 'orange' | 'red'>>({});
   const [calibratingReasonByType, setCalibratingReasonByType] = useState<Record<string, string>>({});
 
   const [officeInfo, setOfficeInfo] = useState<OfficeInfo>({
@@ -520,6 +521,7 @@ export default function App() {
   const openCalibrationDrawer = () => {
     const indicatorsByType: Record<string, SafetyIndicator[]> = {};
     const statusByType: Record<string, 'green' | 'orange' | 'red'> = {};
+    const originalStatusByType: Record<string, 'green' | 'orange' | 'red'> = {};
     const reasonByType: Record<string, string> = {};
     SAFETY_RISK_TYPES.forEach(riskType => {
       const existingCalibration = manualCalibrations[riskType.id];
@@ -529,16 +531,20 @@ export default function App() {
       
       if (existingCalibration) {
         statusByType[riskType.id] = existingCalibration.calibratedStatus;
+        originalStatusByType[riskType.id] = existingCalibration.calibratedStatus;
         reasonByType[riskType.id] = existingCalibration.calibratedReason || '';
       } else {
         const hasRed = riskType.indicators.some(i => i.status === 'red');
         const hasOrange = riskType.indicators.some(i => i.status === 'orange');
-        statusByType[riskType.id] = hasRed ? 'red' : hasOrange ? 'orange' : 'green';
+        const originalStatus = hasRed ? 'red' : hasOrange ? 'orange' : 'green';
+        statusByType[riskType.id] = originalStatus;
+        originalStatusByType[riskType.id] = originalStatus;
         reasonByType[riskType.id] = '';
       }
     });
     setCalibratingIndicatorsByType(indicatorsByType);
     setCalibratingStatusByType(statusByType);
+    setOriginalStatusByType(originalStatusByType);
     setCalibratingReasonByType(reasonByType);
     setIsCalibrationDrawerOpen(true);
   };
@@ -821,21 +827,15 @@ export default function App() {
               {/* Card 1: Workplace Info */}
               <div className="relative border-b border-divider-light bg-white sticky top-0 z-40">
                 <div className="relative z-10 p-4 pb-0 max-w-[1000px] mx-auto">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex flex-col gap-2 mb-2">
                     <button
                       onClick={() => navigate('/')}
-                      className="p-2 hover:bg-bg-overlay rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1.5 self-start px-2.5 py-1.5 hover:bg-bg-overlay rounded-lg transition-colors text-primary text-sm font-medium"
                     >
-                      <ArrowLeft size={20} className="text-text-body" />
+                      <ArrowLeft size={16} className="text-primary" />
+                      返回列表
                     </button>
                     <h2 className="font-semibold text-text-title" style={{ fontSize: '22px' }}>{currentWorkplace.name}</h2>
-                    <button 
-                      className="inline-flex items-center gap-1.5 px-1.5 py-1.5 bg-white rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all"
-                      onClick={() => setIsWorkplaceDrawerOpen(true)}
-                    >
-                      <ArrowLeftRight size={14} />
-                      切换职场
-                    </button>
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-y-2 mt-3">
@@ -890,38 +890,36 @@ export default function App() {
                   <div className="rounded-xl p-4 flex items-center relative" style={{ backgroundColor: '#FFFFFF', backgroundImage: 'url(./Vector-3226.png)', backgroundRepeat: 'no-repeat', backgroundPosition: 'left top', backgroundSize: 'auto', paddingBottom: '0px' }}>
                     {/* Safety Overview */}
                     <div className="flex-1 relative">
-                      <div className="flex items-center" style={{ alignItems: 'center', minHeight: '36px' }}>
-                        <svg 
-                          width="20" 
-                          height="20" 
-                          viewBox="0 0 20 20" 
-                          fill="none" 
-                          xmlns="http://www.w3.org/2000/svg"
-                          style={{ display: 'inline-flex', verticalAlign: 'middle' }}
+                      <div className="flex items-center justify-between" style={{ alignItems: 'center', minHeight: '36px' }}>
+                        <div className="flex items-center">
+                          <svg 
+                            width="20" 
+                            height="20" 
+                            viewBox="0 0 20 20" 
+                            fill="none" 
+                            xmlns="http://www.w3.org/2000/svg"
+                            style={{ display: 'inline-flex', verticalAlign: 'middle' }}
+                          >
+                            <path d="M11.4435 1.66707C10.802 0.555963 9.1982 0.555962 8.5567 1.66707L0.618234 15.8337C-0.0232666 16.9448 0.778607 18.3337 2.06161 18.3337H17.9387C19.2217 18.3337 20.0236 16.9448 19.3821 15.8337L11.4435 1.66707ZM8.95833 6.875C8.95833 6.52982 9.23816 6.25 9.58333 6.25H10.4167C10.7618 6.25 11.0417 6.52982 11.0417 6.875V11.875C11.0417 12.2202 10.7618 12.5 10.4167 12.5H9.58333C9.23816 12.5 8.95833 12.2202 8.95833 11.875V6.875ZM8.95833 13.9583C8.95833 13.6132 9.23816 13.3333 9.58333 13.3333H10.4167C10.7618 13.3333 11.0417 13.6132 11.0417 13.9583V14.7917C11.0417 15.1368 10.7618 15.4167 10.4167 15.4167H9.58333C9.23816 15.4167 8.95833 15.1368 8.95833 14.7917V13.9583Z" fill="#F54A45"/>
+                          </svg>
+                          <span className="text-lg text-red-600" style={{ marginLeft: '8px', lineHeight: '1', verticalAlign: 'middle', fontWeight: '700' }}>红灯提醒，请关注以下风险</span>
+                        </div>
+                        <button 
+                          onClick={openCalibrationDrawer}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all"
                         >
-                          <path d="M11.4435 1.66707C10.802 0.555963 9.1982 0.555962 8.5567 1.66707L0.618234 15.8337C-0.0232666 16.9448 0.778607 18.3337 2.06161 18.3337H17.9387C19.2217 18.3337 20.0236 16.9448 19.3821 15.8337L11.4435 1.66707ZM8.95833 6.875C8.95833 6.52982 9.23816 6.25 9.58333 6.25H10.4167C10.7618 6.25 11.0417 6.52982 11.0417 6.875V11.875C11.0417 12.2202 10.7618 12.5 10.4167 12.5H9.58333C9.23816 12.5 8.95833 12.2202 8.95833 11.875V6.875ZM8.95833 13.9583C8.95833 13.6132 9.23816 13.3333 9.58333 13.3333H10.4167C10.7618 13.3333 11.0417 13.6132 11.0417 13.9583V14.7917C11.0417 15.1368 10.7618 15.4167 10.4167 15.4167H9.58333C9.23816 15.4167 8.95833 15.1368 8.95833 14.7917V13.9583Z" fill="#F54A45"/>
-                        </svg>
-                        <span className="text-lg text-red-600" style={{ marginLeft: '8px', lineHeight: '1', verticalAlign: 'middle', fontWeight: '700' }}>红灯提醒，请关注以下风险</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="#1456F0"/>
+                            <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="#1456F0"/>
+                          </svg>
+                          校准
+                        </button>
                       </div>
                     </div>
                   </div>
 
                   {/* Safety Status Section */}
                   <div id="card-safety" ref={safetyRef} className="p-4">
-                    {/* Section Header */}
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-base font-medium text-text-title">安全概况</h3>
-                      <button 
-                        onClick={openCalibrationDrawer}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                          <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="#1456F0"/>
-                          <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="#1456F0"/>
-                        </svg>
-                        校准
-                      </button>
-                    </div>
 
                     {/* Warning Group */}
                     <div className="rounded-lg p-0 mb-7">
@@ -1807,16 +1805,18 @@ export default function App() {
 
                 <div className="flex-1 overflow-y-auto p-4">
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       {SAFETY_RISK_TYPES.map((riskType) => {
                         const currentCalibration = manualCalibrations[riskType.id];
                         const status = calibratingStatusByType[riskType.id] || 'green';
+                        const originalStatus = originalStatusByType[riskType.id] || 'green';
                         const reason = calibratingReasonByType[riskType.id] || '';
                         const indicators = calibratingIndicatorsByType[riskType.id] || [];
+                        const hasStatusChanged = status !== originalStatus;
                         
                         const statusColor = status === 'red' ? '#E22E28' : status === 'orange' ? '#E8921C' : '#34A853';
                         const cardBgColor = status === 'red' ? 'bg-red-50' : status === 'orange' ? 'bg-yellow-50' : 'bg-green-50';
-                        const titleColor = status === 'red' ? 'text-red-600' : status === 'orange' ? 'text-yellow-600' : 'text-green-600';
+                        const titleColor = status === 'red' ? 'text-red-600' : status === 'orange' ? 'text-yellow-600' : 'text-text-title';
                         
                         return (
                           <div key={riskType.id} className="rounded-xl overflow-hidden transition-opacity border" style={{ borderColor: '#DEE0E3', borderWidth: '0.5px' }}>
@@ -1852,48 +1852,50 @@ export default function App() {
                                 <div className="flex items-center gap-2">
                                   <button
                                     onClick={() => updateRiskTypeStatus(riskType.id, 'green')}
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
+                                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
                                       status === 'green'
-                                        ? 'bg-green-500 border-green-500'
-                                        : 'bg-white border-gray-200 hover:border-green-500'
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-white border border-gray-200 text-text-body hover:border-green-500 hover:text-green-500'
                                     }`}
                                   >
-                                    {status === 'green' && <CheckCircle2 size={12} className="text-white" />}
+                                    绿灯
                                   </button>
                                   <button
                                     onClick={() => updateRiskTypeStatus(riskType.id, 'orange')}
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
+                                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
                                       status === 'orange'
-                                        ? 'bg-yellow-500 border-yellow-500'
-                                        : 'bg-white border-gray-200 hover:border-yellow-500'
+                                        ? 'bg-yellow-500 text-white'
+                                        : 'bg-white border border-gray-200 text-text-body hover:border-yellow-500 hover:text-yellow-500'
                                     }`}
                                   >
-                                    {status === 'orange' && <AlertCircle size={12} className="text-white" />}
+                                    黄灯
                                   </button>
                                   <button
                                     onClick={() => updateRiskTypeStatus(riskType.id, 'red')}
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
+                                    className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
                                       status === 'red'
-                                        ? 'bg-red-500 border-red-500'
-                                        : 'bg-white border-gray-200 hover:border-red-500'
+                                        ? 'bg-red-500 text-white'
+                                        : 'bg-white border border-gray-200 text-text-body hover:border-red-500 hover:text-red-500'
                                     }`}
                                   >
-                                    {status === 'red' && <AlertCircle size={12} className="text-white" />}
+                                    红灯
                                   </button>
                                 </div>
                               </div>
                             </div>
                             <div className="bg-white p-3 pr-3">
-                              <div className="mb-3">
-                                <label className="text-xs font-medium text-text-title mb-1 block">校准理由</label>
-                                <textarea
-                                  value={reason}
-                                  onChange={(e) => updateCalibrationReason(riskType.id, e.target.value)}
-                                  className="w-full px-2 py-1.5 border border-divider-light rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                                  placeholder="请输入校准理由..."
-                                  rows={2}
-                                />
-                              </div>
+                              {(hasStatusChanged || currentCalibration) && (
+                                <div className="mb-3">
+                                  <label className="text-xs font-medium text-text-title mb-1 block">校准理由</label>
+                                  <textarea
+                                    value={reason}
+                                    onChange={(e) => updateCalibrationReason(riskType.id, e.target.value)}
+                                    className="w-full px-2 py-1.5 border border-divider-light rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                                    placeholder="请输入校准理由..."
+                                    rows={2}
+                                  />
+                                </div>
+                              )}
                               {currentCalibration && currentCalibration.calibratedReason && (
                                 <div className="mb-3 p-2 bg-tag-green-bg/20 rounded-lg">
                                   <p className="text-xs text-text-caption">
@@ -1926,7 +1928,7 @@ export default function App() {
                                             <path d="M6.32812 9.59495C6.32812 9.3727 6.50829 9.19254 6.73054 9.19254H7.26709C7.48934 9.19254 7.66951 9.3727 7.66951 9.59495V10.1315C7.66951 10.3538 7.48934 10.5339 7.26709 10.5339H6.73054C6.50829 10.5339 6.32812 10.3538 6.32812 10.1315V9.59495Z" fill="#E22E28"/>
                                           </svg>
                                         )}
-                                        <span className={indicator.status === 'green' ? 'text-tag-green-text font-medium' : indicator.status === 'orange' ? 'font-medium' : 'text-red-600 font-medium'} style={{ color: indicator.status === 'orange' ? '#E22E28' : undefined }}>
+                                        <span className={indicator.status === 'green' ? 'text-text-title font-medium' : indicator.status === 'orange' ? 'font-medium' : 'text-red-600 font-medium'} style={{ color: indicator.status === 'orange' ? '#E22E28' : undefined }}>
                                           {indicator.value}
                                         </span>
                                       </div>

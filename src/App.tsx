@@ -112,42 +112,51 @@ interface Workplace {
 // --- Mock Data ---
 
 const SAFETY_RISK_TYPES: SafetyRiskType[] = [
-  { id: 'entry', name: '出入风险', indicators: [
-    { label: '无权限人员闯入次数：', value: '10次', status: 'green' },
-    { label: '闯入报警响应时效达标率：', value: '达标', status: 'green' }
+  { id: 'entry', name: '出入安全', indicators: [
+    { label: '闯入事件量级', value: '≥ 2 次', status: 'red' },
+    { label: '闯入报警响应时效', value: '达标', status: 'green' }
   ]},
-  { id: 'fire', name: '消防风险', indicators: [
-    { label: '明火事件数量：', value: '0次', status: 'green' },
-    { label: '工区消防手续是否完备：', value: '不完备', status: 'red' }
+  { id: 'fire', name: '消防安全', indicators: [
+    { label: '明火事件量级', value: '0次', status: 'green' },
+    { label: '疏散演习用时', value: '3分钟', status: 'green' },
+    { label: '消防手续完备性', value: '完备', status: 'green' },
+    { label: '消防审计合规率', value: '< 60%', status: 'red' }
   ]},
-  { id: 'disaster', name: '极端灾害风险', indicators: [
-    { label: '气象预警响应：', value: '及时', status: 'green' },
-    { label: '防汛物资储备：', value: '充足', status: 'green' }
+  { id: 'personal', name: '人身安全', indicators: [
+    { label: '急救响应时效', value: '达标', status: 'green' },
+    { label: '急救响应质量', value: '达标', status: 'green' }
   ]},
-  { id: 'order', name: '办公秩序风险', indicators: [
-    { label: '违规吸烟举报：', value: '0次', status: 'green' },
-    { label: '办公区噪音达标：', value: '100%', status: 'green' }
+  { id: 'complaint', name: '客诉', indicators: [
+    { label: '安保处置行为', value: '处置得当', status: 'green' },
+    { label: '职场伤亡/舆情后果', value: '无/轻度后果', status: 'green' }
   ]},
-  { id: 'property', name: '财产损失风险', indicators: [
-    { label: '资产丢失报案：', value: '0次', status: 'green' },
-    { label: '监控覆盖完整率：', value: '100%', status: 'green' }
+  { id: 'disaster', name: '极端天气/自然灾害', indicators: [
+    { label: '应急预警识别', value: '全部识别', status: 'green' },
+    { label: '检查表单时效', value: '时效达标', status: 'green' },
+    { label: '灾害后果严重性', value: '无/轻度后果', status: 'green' }
   ]},
-  { id: 'traffic', name: '交通事故风险', indicators: [
-    { label: '园区超速违章：', value: '0次', status: 'green' },
-    { label: '停车场秩序评分：', value: '9.8', status: 'green' }
+  { id: 'traffic', name: '交通事故/拥堵', indicators: [
+    { label: '交通设施与动线规划', value: '合理', status: 'green' },
+    { label: '交通管理方案合理性', value: '合理', status: 'green' },
+    { label: '交通方案执行情况', value: '执行合格', status: 'green' },
+    { label: '交通事故伤亡后果', value: '无/轻度后果', status: 'green' }
   ]},
-  { id: 'complaint', name: '客诉风险', indicators: [
-    { label: '安全服务投诉：', value: '0次', status: 'green' },
-    { label: '投诉处理时效：', value: '100%', status: 'green' }
+  { id: 'order', name: '办公/园区秩序', indicators: [
+    { label: '冲突/治安后果', value: '无/轻度后果', status: 'green' },
+    { label: '应急预案执行情况', value: '符合流程', status: 'green' }
+  ]},
+  { id: 'property', name: '财产损失', indicators: [
+    { label: '单次经济损失金额', value: '≤ 10万', status: 'green' },
+    { label: '核心机密资产丢失', value: '未丢失', status: 'green' }
   ]}
 ];
 
 const STABLE_RISKS = [
-  { id: 'disaster', name: '极端灾害风险', summary: '气象/防汛 正常', indicators: [{ label: '气象预警响应：', value: '及时' }, { label: '防汛物资储备：', value: '充足' }] },
-  { id: 'order', name: '办公秩序风险', summary: '吸烟/噪音 达标', indicators: [{ label: '违规吸烟举报：', value: '0次' }, { label: '办公区噪音达标：', value: '100%' }] },
-  { id: 'property', name: '财产损失风险', summary: '资产/监控 正常', indicators: [{ label: '资产丢失报案：', value: '0次' }, { label: '监控覆盖完整率：', value: '100%' }] },
-  { id: 'traffic', name: '交通事故风险', summary: '超速/秩序 良好', indicators: [{ label: '园区超速违章：', value: '0次' }, { label: '停车场秩序评分：', value: '9.8' }] },
-  { id: 'complaint', name: '客诉风险', summary: '服务/时效 100%', indicators: [{ label: '安全服务投诉：', value: '0次' }, { label: '投诉处理时效：', value: '100%' }] },
+  { id: 'disaster', name: '极端天气/自然灾害', summary: '极端天气/自然灾害 正常', indicators: [{ label: '应急预警识别', value: '全部识别' }, { label: '检查表单时效', value: '时效达标' }] },
+  { id: 'order', name: '办公/园区秩序', summary: '办公/园区秩序 正常', indicators: [{ label: '冲突/治安后果', value: '无/轻度后果' }, { label: '应急预案执行情况', value: '符合流程' }] },
+  { id: 'property', name: '财产损失', summary: '财产损失 正常', indicators: [{ label: '单次经济损失金额', value: '≤ 10万' }, { label: '核心机密资产丢失', value: '未丢失' }] },
+  { id: 'traffic', name: '交通事故/拥堵', summary: '交通/拥堵 正常', indicators: [{ label: '交通设施与动线规划', value: '合理' }, { label: '交通管理方案合理性', value: '合理' }] },
+  { id: 'complaint', name: '客诉', summary: '客诉 正常', indicators: [{ label: '安保处置行为', value: '处置得当' }, { label: '职场伤亡/舆情后果', value: '无/轻度后果' }] },
 ];
 
 const RECTIFICATION_DATA: RectificationItem[] = [
@@ -422,41 +431,53 @@ export default function App() {
   const riskRef = useRef<HTMLDivElement>(null);
   const officeRef = useRef<HTMLDivElement>(null);
 
-  const riskTabs = ['出入风险', '消防风险', '客诉风险', '人身安全风险', '秩序风险', '财产风险'];
+  const riskTabs = ['出入安全', '消防安全', '人身安全', '客诉', '极端天气/自然灾害', '交通事故/拥堵', '办公/园区秩序', '财产损失'];
 
   const [riskAssessmentData, setRiskAssessmentData] = useState<Record<string, RiskAssessmentData>>({
-    '出入风险': {
-      name: '出入风险',
+    '出入安全': {
+      name: '出入安全',
       riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">北京大钟寺广场为开放式自持园区，现运营的C座和D座由商场改造成的办公室，楼宇布局复杂，需要防范的出入口数量接近200个，其中全员可通行出入口数共42个，包括23个无安保值守出入口，和14个临近商业区域出入口，外部人员（外卖、顾客、代驾等）尾随误入风险高。</p><p class="text-sm text-text-body leading-relaxed">9-11月大钟寺现场响应各类闯入报警（尾随、强开等）共2191次，外部人员真实闯入事件共10起，其中9起均为商业区域人员误入。</p>',
       protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">管控措施：对远程和现场响应安保人员定期开展出入管理专项培训和模拟演练，持续提升异常人员识别、追踪和拦截能力；临近商业出入口位置增加更为醒目的办公区域提示和商业区域引导标识，降低误入风险；增加周界门检查和测试频次，发现设备异常及时同步技防团队跟进维修。</p><p class="text-sm text-text-body leading-relaxed mb-2">人防配置：对临近商业区域且高频（月均大于3起）发生外部人员误入工区事件（如D座B2层餐厅、B1层4号电梯厅入口等），在工作时间增设2名安保固定岗值守；通行高峰期间安排巡视岗支持临近商业区的无安保值守出入口身份查验。</p><p class="text-sm text-text-body leading-relaxed mb-2">技防配置：大钟寺园区共配置矮闸机7组、高闸机10组、平开门禁7个、旋转门15组、刷卡立柱3个，以实现防线二技术手段管控；大钟寺园区共安装3,472个监控探头，可有效追踪或回查闯入人员行动轨迹。</p><p class="text-sm text-text-body leading-relaxed">人技联动：通过人/技防联动，落实闯入报警响应机制，实现安保快速响应、追踪和拦截外部入侵人员。</p>',
       updateTime: '2026-03-15 10:00'
     },
-    '消防风险': {
-      name: '消防风险',
+    '消防安全': {
+      name: '消防安全',
       riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">固有消防风险：大钟寺C座和D座均为高层建筑（据建筑防火设计规范，超过24米的非单层公共建筑为高层建筑），且均设有中庭，建筑火灾竖向蔓延速度快，人员垂直疏散距离长，疏散困难，外部救援难度大。</p><p class="text-sm text-text-body leading-relaxed mb-2">主要消防风险：大钟寺C座和D座均配置了位于地下的餐饮楼层，电气设备数量多，电气火灾风险较高；建筑内的厨房均使用天然气，存在燃气泄漏的消防风险；地下车库设有电动车充电桩，电动车起火扑救难度大。</p><p class="text-sm text-text-body leading-relaxed">其它消防风险：大钟寺楼内隐蔽空间较多，隐蔽空间存在堆物风险；园区处于边运营、边施工建设阶段，运营与施工风险叠加易引发消防安全风险。</p>',
       protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">固有风险防护：保障消防设施的正常运行，大钟寺配置了两名维保人员日间常驻现场，夜间15分钟响应，2小时到达现场，能够确保当消防设施出现故障时及时维修；组织同学进行全楼疏散演习，确保同学熟悉疏散路径，掌握疏散知识。</p><p class="text-sm text-text-body leading-relaxed mb-2">主要风险防护：组织餐饮供应商进行每日和每周防火巡查，定期检查电气设施和燃气设施的运行状态；制定地下车库新能源汽车火灾扑救方案，采购并补充推车式水基型灭火器等初期灭火工具，完善充电桩配电设施过载、故障断电等安全保护功能。</p><p class="text-sm text-text-body leading-relaxed mb-2">其它风险防护：定期组织隐蔽空间的联合巡检，及时消除隐患；消防运营团队在做好日常运营管理的同时，与地产团队配合将新建区域消防设备设施接入消防系统，施工完成前三个月消防团队开始介入检查，监督总包整改，最终验收阶段消防团队负责承接查验，降低运营和施工交接区域的消防风险。</p><p class="text-sm text-text-body leading-relaxed mb-2">消防人力配置：大钟寺E栋设置一个集中消防控制室，全年24h双人值班，每班2人，值班人员均持证上岗(中级消防设施操作员证书)；人员配置13人：管理岗1人（消防主管）、技术员4人（消防技术员）、操作员8人。</p><p class="text-sm text-text-body leading-relaxed mb-2">安保兼职消防队：大钟寺兼职微消队共计118人（含安全经理2人，领班7人）：其中1号楼61人，2号楼57人，满足24H不间断值岗，每班不少于20人要求；每月度内部演练比赛，每季度组织开展消防应急培训演练。</p><p class="text-sm text-text-body leading-relaxed mb-2">消防系统/设施：大钟寺园区配有功能良好的消防系统和末端设备，主要包括火灾自动报警系统、电气火灾监控系统、消防电源监控系统、消火栓系统、自动喷水灭火系统、防排烟系统、防火门监控系统、气体灭火系统、疏散指示应急照明系统、燃气报警系统、厨房灭火系统、防火分隔设施（防火卷帘、挡烟垂壁）共12类。</p><p class="text-sm text-text-body leading-relaxed">微型消防站物资：大钟寺园区配有消防器材柜共3个：C座/D座和E座（消防中控室）各配置1套消防器材柜；消防应急包6套，C座和D座各配置3套，含防毒面具、应急手电、灭火器等，配置在现场安保值班室，以及B3和B4层车库岗亭内。</p>',
       updateTime: '2026-03-15 10:00'
     },
-    '客诉风险': {
-      name: '客诉风险',
-      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">外墙悬挂多个字节相关业务logo，百度/高德地图中均显示"总部"字样，被外界认为是抖音北京总部，导致客诉量大，9-11月大钟寺现场共接待客诉事件425起，承接北京区域53%的客诉量，其中涉及堵门、拉横幅等中风险及以上客诉事件3起，虽风险客诉会引导至临近盈都职场处置，但仍有部分人员会折返回大钟寺采取闹访、滞留等手段施压，且园区内配有"1733商业区"，人流量大，舆情风险高。</p><p class="text-sm text-text-body leading-relaxed">引导至盈都职场原因：大钟寺园区人流量大、临近三环辅路，发生极端闹访事件易引起政府关注，盈都距离大钟寺步行10分钟，位置相对偏僻，人流量小，风险可控。</p>',
-      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">管控措施：培养并推荐更多高潜力保安参与兼职客诉经理认证培训和评估，着力提升现场客诉接待沟通能力；季度开展对现有安保人员的极端客诉应急响应培训和实操演练，持续提升现场突发事件处置能力；与PA、属地派出所紧密配合，闹访案件明确告诫客诉人前往盈都职场处理。</p><p class="text-sm text-text-body leading-relaxed mb-2">人防配置：临近的方恒职场常驻1名客诉经理，大钟寺现场常驻3名安保认证兼职客诉岗；大钟寺C/D座可抽掉各4名巡视岗和1名管理岗响应各类突发事件；防暴队伍共计20人，分为2队，均接受过属地公安机关的防暴培训和联合演练。</p><p class="text-sm text-text-body leading-relaxed mb-2">物资配置：配置防暴柜共4组，各类防暴器材50个，伞式警示围挡20组。</p><p class="text-sm text-text-body leading-relaxed mb-2">线下管控：安保及时使用围挡（或黑伞）对极端行为进行遮挡，阻止拍摄；安保对周围警戒，疏散围观人员，礼貌劝止拍摄；当客诉人员执意不删除拍摄内容，及时同步警方，劝导客诉人员删除。</p><p class="text-sm text-text-body leading-relaxed">线上联动：实时同步PR，对园区进行电子围栏布控，及时监控并处置舆情。</p>',
-      updateTime: '2026-03-15 10:00'
-    },
-    '人身安全风险': {
-      name: '人身安全风险',
+    '人身安全': {
+      name: '人身安全',
       riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">大钟寺园区部分配套设施（停车场、穿梭车站等）位于园区外围，距离办公楼宇较远，现有工区SOS资源难以确保园区周边紧急医疗事件的内部响应时效（&lt;4mins到场）。</p><p class="text-sm text-text-body leading-relaxed">9-11月大钟寺园区外围SOS医疗响应事件共3起（其中中风险2起、低风险1起），平均响应时效&gt;5mins。</p>',
       protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">管控措施：通过不断开展专项培训和实操演练，持续提升SOS值班号的沟通技巧和现场安保的急救响应能力，确保能够快速且准确获取求救人员的位置信息，提升安保响应效率；外围固定岗位增配AED+FAK，可快速取用响应园区周边紧急医疗需求，保障响应时效。</p><p class="text-sm text-text-body leading-relaxed mb-2">SOS组员配置：C座（1号楼）SOS小组正式成员14人，预备3人，一共17人；D座（2号楼）SOS小组正式成员15人，预备9人，一共24人。</p><p class="text-sm text-text-body leading-relaxed mb-2">安保配置：C座（1号楼）持有急救证保安共29人（安保员25人，管理岗4人）；D座（2号楼）持有急救证保安共27人（安保员22人，管理岗5人）。</p><p class="text-sm text-text-body leading-relaxed">SOS物资配置：C座（1号楼）配置AED和FAK各13个；D座（2号楼）配置AED和FAK各11个。</p>',
       updateTime: '2026-03-15 10:00'
     },
-    '秩序风险': {
-      name: '秩序风险',
+    '客诉': {
+      name: '客诉',
+      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">外墙悬挂多个字节相关业务logo，百度/高德地图中均显示"总部"字样，被外界认为是抖音北京总部，导致客诉量大，9-11月大钟寺现场共接待客诉事件425起，承接北京区域53%的客诉量，其中涉及堵门、拉横幅等中风险及以上客诉事件3起，虽风险客诉会引导至临近盈都职场处置，但仍有部分人员会折返回大钟寺采取闹访、滞留等手段施压，且园区内配有"1733商业区"，人流量大，舆情风险高。</p><p class="text-sm text-text-body leading-relaxed">引导至盈都职场原因：大钟寺园区人流量大、临近三环辅路，发生极端闹访事件易引起政府关注，盈都距离大钟寺步行10分钟，位置相对偏僻，人流量小，风险可控。</p>',
+      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">管控措施：培养并推荐更多高潜力保安参与兼职客诉经理认证培训和评估，着力提升现场客诉接待沟通能力；季度开展对现有安保人员的极端客诉应急响应培训和实操演练，持续提升现场突发事件处置能力；与PA、属地派出所紧密配合，闹访案件明确告诫客诉人前往盈都职场处理。</p><p class="text-sm text-text-body leading-relaxed mb-2">人防配置：临近的方恒职场常驻1名客诉经理，大钟寺现场常驻3名安保认证兼职客诉岗；大钟寺C/D座可抽掉各4名巡视岗和1名管理岗响应各类突发事件；防暴队伍共计20人，分为2队，均接受过属地公安机关的防暴培训和联合演练。</p><p class="text-sm text-text-body leading-relaxed mb-2">物资配置：配置防暴柜共4组，各类防暴器材50个，伞式警示围挡20组。</p><p class="text-sm text-text-body leading-relaxed mb-2">线下管控：安保及时使用围挡（或黑伞）对极端行为进行遮挡，阻止拍摄；安保对周围警戒，疏散围观人员，礼貌劝止拍摄；当客诉人员执意不删除拍摄内容，及时同步警方，劝导客诉人员删除。</p><p class="text-sm text-text-body leading-relaxed">线上联动：实时同步PR，对园区进行电子围栏布控，及时监控并处置舆情。</p>',
+      updateTime: '2026-03-15 10:00'
+    },
+    '极端天气/自然灾害': {
+      name: '极端天气/自然灾害',
+      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">极端天气风险：北京地区夏季多暴雨、雷电等极端天气，冬季多暴雪、大风等极端天气，可能对园区运营造成影响。</p><p class="text-sm text-text-body leading-relaxed">自然灾害风险：园区地处地震带边缘，存在地震风险；周边地势较低，存在内涝风险。</p>',
+      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">预警识别：建立极端天气预警机制，与气象部门保持实时联动，确保及时识别各类极端天气预警。</p><p class="text-sm text-text-body leading-relaxed mb-2">应急预案：制定极端天气和自然灾害应急预案，定期组织应急演练，确保人员熟悉应急处置流程。</p><p class="text-sm text-text-body leading-relaxed mb-2">物资储备：储备必要的应急物资，包括防汛物资、防寒物资、应急照明设备等。</p>',
+      updateTime: '2026-03-15 10:00'
+    },
+    '交通事故/拥堵': {
+      name: '交通事故/拥堵',
+      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">交通拥堵：园区临近三环辅路，早晚高峰期间交通拥堵严重，员工通勤和访客来访受影响。</p><p class="text-sm text-text-body leading-relaxed">交通事故：园区周边车流量大，存在交通事故风险；园区内停车位紧张，车辆剐蹭时有发生。</p>',
+      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">交通规划：合理规划园区交通设施和动线，确保车流和人流有序通行。</p><p class="text-sm text-text-body leading-relaxed mb-2">交通管理：制定合理的交通管理方案，安排专人指挥交通，确保高峰期通行顺畅。</p><p class="text-sm text-text-body leading-relaxed mb-2">安保执行：加强安保人员交通管理培训，确保交通管理方案有效执行。</p>',
+      updateTime: '2026-03-15 10:00'
+    },
+    '办公/园区秩序': {
+      name: '办公/园区秩序',
       riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">吸烟违规：部分员工在非吸烟区吸烟，存在火灾隐患，影响办公环境。</p><p class="text-sm text-text-body leading-relaxed">噪音干扰：办公区噪音超标，影响员工工作效率，易引发矛盾冲突。</p>',
       protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">人防配置：加强巡逻检查，在重点区域设置禁烟标识，安排专人劝阻违规行为。</p><p class="text-sm text-text-body leading-relaxed">管理措施：制定办公区秩序管理制度，开展文明办公宣传，建立违规举报机制。</p>',
       updateTime: '2026-03-15 10:00'
     },
-    '财产风险': {
-      name: '财产风险',
+    '财产损失': {
+      name: '财产损失',
       riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">资产丢失：园区面积大，出入口多，存在贵重物品丢失风险。</p><p class="text-sm text-text-body leading-relaxed">监控盲区：部分区域监控覆盖不足，发生事件后难以追溯。</p>',
       protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">技防配置：全量覆盖 3472 个监控探头，定期检查监控设备运行状态。</p><p class="text-sm text-text-body leading-relaxed">管理措施：建立资产登记管理制度，加强贵重物品保管，定期开展安全巡查。</p>',
       updateTime: '2026-03-15 10:00'
@@ -939,7 +960,7 @@ export default function App() {
                           const cardBorderColor = 'border-red-300';
                           const titleIconColor = 'text-red-600';
                           return (
-                            <div key={riskType.id} className="rounded-xl overflow-hidden hover:opacity-90 transition-opacity border" style={{ borderColor: '#DEE0E3', borderWidth: '0.5px' }}>
+                            <div key={riskType.id} className="rounded-xl overflow-hidden hover:opacity-90 transition-opacity border" style={{ borderColor: '#DEE0E3', borderWidth: '0.5px', minHeight: '160px' }}>
                               <div className="py-2 px-3">
                                 <div className="flex items-center gap-2">
                                   <svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -956,7 +977,7 @@ export default function App() {
                                     return (
                                       <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
                                         <span className="text-text-caption flex-1">{indicator.label}</span>
-                                        <div className="flex items-center gap-2" style={{ paddingLeft: 0, paddingRight: 0, width: '60px' }}>
+                                        <div className="flex items-center gap-2" style={{ paddingLeft: 0, paddingRight: 0, width: '100px' }}>
                                           {indicator.status === 'green' ? (
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-tag-green-text">
                                               <circle cx="12" cy="12" r="10"></circle>
@@ -1012,7 +1033,7 @@ export default function App() {
                         </div>
                       </div>
                       {showStableDetails && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-start mt-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                           {SAFETY_RISK_TYPES.slice(2).map(riskType => {
                             const calibration = manualCalibrations[riskType.id];
                             const indicators = calibration ? calibration.calibratedIndicators : riskType.indicators;
@@ -1020,7 +1041,7 @@ export default function App() {
                               <div 
                                 key={riskType.id} 
                                 className="bg-bg-overlay rounded-xl p-3 flex flex-col transition-all duration-200 border"
-                                style={{ borderColor: '#DEE0E3', borderWidth: '0.5px' }}
+                                style={{ borderColor: '#DEE0E3', borderWidth: '0.5px', minHeight: '160px' }}
                               >
                                 <div className="flex items-center">
                                   <div className="flex flex-col gap-1">
@@ -1040,7 +1061,7 @@ export default function App() {
                                       <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
                                         <span className="text-text-caption flex-1">{indicator.label}</span>
                                         <div className="flex items-center gap-1.5">
-                                          <span className={`${statusColor} font-medium flex items-center gap-1.5`} style={{ width: '60px' }}>
+                                          <span className={`${statusColor} font-medium flex items-center gap-1.5`} style={{ width: '100px' }}>
                                             {indicator.status === 'green' ? (
                                               <CheckCircle2 size={14} />
                                             ) : indicator.status === 'red' ? (
@@ -1917,7 +1938,7 @@ export default function App() {
                                   return (
                                     <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
                                       <span className="text-text-caption flex-1">{indicator.label}</span>
-                                      <div className="flex items-center gap-2" style={{ paddingLeft: 0, paddingRight: 0, width: '60px' }}>
+                                      <div className="flex items-center gap-2" style={{ paddingLeft: 0, paddingRight: 0, width: '100px' }}>
                                         {indicator.status === 'green' ? (
                                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-tag-green-text">
                                             <circle cx="12" cy="12" r="10"></circle>

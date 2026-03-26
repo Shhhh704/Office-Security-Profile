@@ -1445,7 +1445,7 @@ export default function App() {
                     <div className="mb-7">
                       <h4 className="text-sm font-medium text-text-title mb-4">特殊空间</h4>
                       <div className="flex flex-wrap gap-2">
-                        {['KP区域', '实验室', 'EMDF机房', 'IDF机房', '开火厨房', '储藏室'].map((tag, idx) => (
+                        {['实验室', 'EMDF机房', 'IDF机房', '开火厨房', '储藏室'].map((tag, idx) => (
                           <span key={idx} className="px-3 py-1 bg-primary/10 text-text-body rounded-full text-xs font-medium">
                             {tag}
                           </span>

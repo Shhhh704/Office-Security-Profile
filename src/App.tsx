@@ -931,7 +931,7 @@ export default function App() {
                           >
                             <path d="M11.4435 1.66707C10.802 0.555963 9.1982 0.555962 8.5567 1.66707L0.618234 15.8337C-0.0232666 16.9448 0.778607 18.3337 2.06161 18.3337H17.9387C19.2217 18.3337 20.0236 16.9448 19.3821 15.8337L11.4435 1.66707ZM8.95833 6.875C8.95833 6.52982 9.23816 6.25 9.58333 6.25H10.4167C10.7618 6.25 11.0417 6.52982 11.0417 6.875V11.875C11.0417 12.2202 10.7618 12.5 10.4167 12.5H9.58333C9.23816 12.5 8.95833 12.2202 8.95833 11.875V6.875ZM8.95833 13.9583C8.95833 13.6132 9.23816 13.3333 9.58333 13.3333H10.4167C10.7618 13.3333 11.0417 13.6132 11.0417 13.9583V14.7917C11.0417 15.1368 10.7618 15.4167 10.4167 15.4167H9.58333C9.23816 15.4167 8.95833 15.1368 8.95833 14.7917V13.9583Z" fill="#F54A45"/>
                           </svg>
-                          <span className="text-lg text-red-600" style={{ marginLeft: '8px', lineHeight: '1', verticalAlign: 'middle', fontWeight: '700' }}>红灯提醒，请关注以下风险</span>
+                          <span className="text-lg text-red-600" style={{ marginLeft: '8px', lineHeight: '1', verticalAlign: 'middle', fontWeight: '700', fontSize: '16px' }}>2 项指标需关注</span>
                         </div>
                         <button 
                           onClick={openCalibrationDrawer}
@@ -956,11 +956,9 @@ export default function App() {
                         {SAFETY_RISK_TYPES.slice(0, 2).map((riskType, index) => {
                           const calibration = manualCalibrations[riskType.id];
                           const indicators = calibration ? calibration.calibratedIndicators : riskType.indicators;
-                          const cardBgColor = 'bg-red-50';
-                          const cardBorderColor = 'border-red-300';
-                          const titleIconColor = 'text-red-600';
+                          const redIndicatorCount = indicators.filter(ind => ind.status === 'red').length;
                           return (
-                            <div key={riskType.id} className="rounded-xl overflow-hidden hover:opacity-90 transition-opacity border" style={{ borderColor: '#DEE0E3', borderWidth: '0.5px', minHeight: '160px' }}>
+                            <div key={riskType.id} className="rounded-xl overflow-hidden hover:opacity-90 transition-opacity border flex flex-col" style={{ borderColor: '#DEE0E3', borderWidth: '0.5px', minHeight: '160px' }}>
                               <div className="py-2 px-3">
                                 <div className="flex items-center gap-2">
                                   <svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -971,7 +969,7 @@ export default function App() {
                                   </span>
                                 </div>
                               </div>
-                              <div className="bg-white p-3 pr-3">
+                              <div className="bg-white p-3 pr-3 flex-1">
                                 <div className="flex flex-col gap-2">
                                   {indicators.map((indicator, idx) => {
                                     return (
@@ -1006,12 +1004,16 @@ export default function App() {
                                 </div>
                               </div>
                               {(index === 0 || index === 2) && (
-                                <div className="bg-[#f8f9fa] p-3 border-t" style={{ borderColor: '#f3f4f6' }}>
+                                <div className="bg-[#f8f9fa] p-3" style={{ borderRadius: '8px', marginBottom: '12px' }}>
                                   <p className="text-xs text-text-caption">
                                     校准原因：近期地铁改造,导致出入口人流激增,高峰期尾随情况加剧,但保安无法逐一甄别。
                                   </p>
                                 </div>
                               )}
+                              <div className="bg-white p-3 border-t flex items-center justify-between mt-auto" style={{ borderColor: '#f3f4f6' }}>
+                                <span className="text-xs text-text-caption">{redIndicatorCount} 项整改任务</span>
+                                <button className="text-xs text-primary hover:underline font-medium">查看</button>
+                              </div>
                             </div>
                           );
                         })}
@@ -1021,7 +1023,10 @@ export default function App() {
                     <div className="rounded-lg p-0">
                       <div className="flex items-center mb-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-medium" style={{ color: '#1A1A1A' }}>其余5项指标运行平稳</span>
+                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0.833252 9.99998C0.833252 15.0625 4.93742 19.1666 9.99992 19.1666C15.0624 19.1666 19.1666 15.0625 19.1666 9.99998C19.1666 4.93748 15.0624 0.833313 9.99992 0.833313C4.93742 0.833313 0.833252 4.93748 0.833252 9.99998ZM13.162 7.7713C13.4847 7.44854 14.0095 7.4568 14.3322 7.77964C14.6548 8.10248 14.6631 8.62729 14.3402 8.94997C12.7678 10.5216 11.194 12.092 9.62369 13.6657C9.29783 13.9923 8.76869 13.9923 8.44274 13.6658C7.62218 12.8439 6.80034 12.0232 5.97887 11.2021C5.65654 10.88 5.66611 10.3557 5.98819 10.0333C6.31028 9.71087 6.83449 9.70124 7.15675 10.0235L9.03326 11.9L13.162 7.7713Z" fill="#32A645"/>
+                          </svg>
+                          <span className="text-sm font-medium" style={{ color: '#258832', fontSize: '16px' }}>其余 5 项指标运行平稳</span>
                           <button 
                             onClick={() => setShowStableDetails(!showStableDetails)}
                             className="text-sm text-primary hover:underline font-medium flex items-center gap-1"

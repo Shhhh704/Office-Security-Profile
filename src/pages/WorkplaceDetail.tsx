@@ -1,324 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ShieldCheck, 
-  ClipboardCheck, 
-  AlertTriangle, 
-  BookOpen, 
-  Users, 
-  HardDrive, 
-  LifeBuoy,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCcw,
-  MapPin,
-  Maximize2,
-  Calendar,
-  CheckCircle2,
-  AlertCircle,
-  ChevronDown,
-  ExternalLink,
-  Edit3,
-  Search,
-  ArrowLeftRight,
-  ArrowLeft
-} from 'lucide-react';
+import { Button, Tag } from '@universe-design/react';
+import { Users, ChevronRight, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import type {
+  TabType, WorkplaceInfo, RectificationItem, RiskAssessmentData,
+  SafetyIndicator, ManualCalibration, OfficeInfo, EmergencyResource, EmergencyResources,
+} from '../types';
+import { StatusBadge, SafetyStatusBadge, getAggregatedProgress } from '../components/StatusBadge';
+import { WORKPLACES } from '../mocks/workplaces';
+import { SAFETY_RISK_TYPES, RISK_TABS, RISK_TYPE_TO_RECTIFICATION_MAP, INITIAL_RISK_ASSESSMENT_DATA, INITIAL_OFFICE_INFO } from '../mocks/safetyData';
+import { RECTIFICATION_DATA } from '../mocks/rectificationData';
 
-// --- Types ---
 
-type TabType = 'overview' | 'safety' | 'rectification' | 'risk' | 'office';
 
-interface RectificationItem {
-  id: string;
-  type: string;
-  ticketNumber: string;
-  status: 'red' | 'yellow' | 'green';
-  analysis: string;
-  solution: string;
-  progress: 'overdue' | 'pending' | 'completed' | 'accepting';
-  owner: string;
-  planDate: string;
-  finishDate?: string;
-  children?: RectificationItem[];
-}
-
-interface RiskAssessmentData {
-  name: string;
-  riskFeatures: string;
-  protectionMeasures: string;
-  updateTime: string;
-}
-
-interface SafetyIndicator {
-  label: string;
-  value: string;
-  status: 'green' | 'orange' | 'red';
-}
-
-interface SafetyRiskType {
-  id: string;
-  name: string;
-  indicators: SafetyIndicator[];
-}
-
-interface ManualCalibration {
-  riskTypeId: string;
-  calibratedStatus: 'green' | 'orange' | 'red';
-  calibratedIndicators: SafetyIndicator[];
-  calibratedReason: string;
-  calibratedAt: string;
-}
-
-interface EmergencyResource {
-  id: string;
-  name: string;
-  distance: string;
-  address: string;
-  phone: string;
-  driveTime: string;
-}
-
-interface EmergencyResources {
-  fireStations: EmergencyResource[];
-  hospitals: EmergencyResource[];
-  policeStations: EmergencyResource[];
-}
-
-interface OfficeInfo {
-  builtYear: string;
-  moveInDate: string;
-  propertyType: '自持' | '租赁';
-  usage: '办公' | '商业' | '办公+商业';
-  rentalArea: string;
-  totalArea: string;
-  buildingInfo: string;
-  entranceCount: string;
-  hasByteLogo: '是' | '否';
-  expansionPlan: string;
-  emergencyResources: EmergencyResources;
-}
-
-interface Workplace {
-  id: string;
-  name: string;
-  address: string;
-  area: string;
-  entranceCount: string;
-  workstations: string;
-}
-
-// --- Mock Data ---
-
-const SAFETY_RISK_TYPES: SafetyRiskType[] = [
-  { id: 'entry', name: '出入安全', indicators: [
-    { label: '闯入事件量级', value: '≥ 2 次', status: 'red' },
-    { label: '闯入报警响应时效', value: '达标', status: 'green' }
-  ]},
-  { id: 'fire', name: '消防安全', indicators: [
-    { label: '明火事件量级', value: '0次', status: 'green' },
-    { label: '疏散演习用时', value: '3分钟', status: 'green' },
-    { label: '消防手续完备性', value: '完备', status: 'green' },
-    { label: '消防审计合规率', value: '< 60%', status: 'red' }
-  ]},
-  { id: 'personal', name: '人身安全', indicators: [
-    { label: '急救响应时效', value: '达标', status: 'green' },
-    { label: '急救响应质量', value: '达标', status: 'green' }
-  ]},
-  { id: 'complaint', name: '客诉', indicators: [
-    { label: '安保处置行为', value: '处置得当', status: 'green' },
-    { label: '职场伤亡/舆情后果', value: '无/轻度后果', status: 'green' }
-  ]},
-  { id: 'disaster', name: '极端天气/自然灾害', indicators: [
-    { label: '应急预警识别', value: '全部识别', status: 'green' },
-    { label: '检查表单时效', value: '时效达标', status: 'green' },
-    { label: '灾害后果严重性', value: '无/轻度后果', status: 'green' }
-  ]},
-  { id: 'traffic', name: '交通事故/拥堵', indicators: [
-    { label: '交通设施与动线规划', value: '合理', status: 'green' },
-    { label: '交通管理方案合理性', value: '合理', status: 'green' },
-    { label: '交通方案执行情况', value: '执行合格', status: 'green' },
-    { label: '交通事故伤亡后果', value: '无/轻度后果', status: 'green' }
-  ]},
-  { id: 'order', name: '办公/园区秩序', indicators: [
-    { label: '冲突/治安后果', value: '无/轻度后果', status: 'green' },
-    { label: '应急预案执行情况', value: '符合流程', status: 'green' }
-  ]},
-  { id: 'property', name: '财产损失', indicators: [
-    { label: '单次经济损失金额', value: '≤ 10万', status: 'green' },
-    { label: '核心机密资产丢失', value: '未丢失', status: 'green' }
-  ]}
-];
-
-const STABLE_RISKS = [
-  { id: 'disaster', name: '极端天气/自然灾害', summary: '极端天气/自然灾害 正常', indicators: [{ label: '应急预警识别', value: '全部识别' }, { label: '检查表单时效', value: '时效达标' }] },
-  { id: 'order', name: '办公/园区秩序', summary: '办公/园区秩序 正常', indicators: [{ label: '冲突/治安后果', value: '无/轻度后果' }, { label: '应急预案执行情况', value: '符合流程' }] },
-  { id: 'property', name: '财产损失', summary: '财产损失 正常', indicators: [{ label: '单次经济损失金额', value: '≤ 10万' }, { label: '核心机密资产丢失', value: '未丢失' }] },
-  { id: 'traffic', name: '交通事故/拥堵', summary: '交通/拥堵 正常', indicators: [{ label: '交通设施与动线规划', value: '合理' }, { label: '交通管理方案合理性', value: '合理' }] },
-  { id: 'complaint', name: '客诉', summary: '客诉 正常', indicators: [{ label: '安保处置行为', value: '处置得当' }, { label: '职场伤亡/舆情后果', value: '无/轻度后果' }] },
-];
-
-const RECTIFICATION_DATA: RectificationItem[] = [
-  {
-    id: '1',
-    type: '出入风险',
-    ticketNumber: 'CR12566AC',
-    status: 'red',
-    analysis: '近期地铁改造导致出入口人流激增，安全管控压力增大',
-    solution: '-',
-    progress: 'overdue',
-    owner: '-',
-    planDate: '-',
-    finishDate: '2026-03-10',
-    children: [
-      {
-        id: '1-1',
-        type: '',
-        ticketNumber: 'CR12566AC-1',
-        status: 'red',
-        analysis: '早晚高峰期安保人员配置不足',
-        solution: '协调外包保安公司，在早晚高峰时段增加2名安保人员，加强出入口管控',
-        progress: 'overdue',
-        owner: '陈浩',
-        planDate: '2026-03-10',
-        finishDate: '2026-03-12',
-      },
-      {
-        id: '1-2',
-        type: '',
-        ticketNumber: 'CR12566AC-2',
-        status: 'red',
-        analysis: '现有闸机防尾随功能老化',
-        solution: '联系供应商对A区、B区共6台主出入口闸机进行防尾随功能升级',
-        progress: 'pending',
-        owner: '陈梅',
-        planDate: '2026-03-15',
-      }
-    ]
-  },
-  {
-    id: '2',
-    type: '消防风险',
-    ticketNumber: 'XF14577DX',
-    status: 'yellow',
-    analysis: '内部消防审计发现多处灭火器即将过期，存在安全隐患',
-    solution: '-',
-    progress: 'accepting',
-    owner: '-',
-    planDate: '-',
-    finishDate: '2026-03-08',
-    children: [
-      {
-        id: '2-1',
-        type: '',
-        ticketNumber: 'XF14577DX-1',
-        status: 'yellow',
-        analysis: '灭火器临期',
-        solution: '采购并替换全园区共45具即将过期的灭火器，确保消防设备完好',
-        progress: 'accepting',
-        owner: '陈欣',
-        planDate: '2026-03-08',
-        finishDate: '2026-03-08',
-      },
-      {
-        id: '2-2',
-        type: '',
-        ticketNumber: 'XF14577DX-2',
-        status: 'yellow',
-        analysis: 'C区通道杂物堆积',
-        solution: '联合行政部门对C区通道进行全面清理，确保消防通道畅通',
-        progress: 'accepting',
-        owner: '李磊',
-        planDate: '2026-03-05',
-        finishDate: '2026-03-04',
-      }
-    ]
-  }
-];
-
-// --- Components ---
-
-const StatusBadge = ({ type }: { type: RectificationItem['progress'] }) => {
-  const styles = {
-    overdue: 'bg-red-50 text-red-600',
-    pending: 'bg-blue-50 text-blue-600',
-    completed: 'bg-green-50 text-green-600',
-    accepting: 'bg-purple-50 text-purple-600',
-  };
-  const labels = {
-    overdue: '已逾期',
-    pending: '进行中',
-    completed: '已完成',
-    accepting: '验收中',
-  };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${styles[type]}`}>
-      {labels[type]}
-    </span>
-  );
-};
-
-const SafetyStatusBadge = ({ status }: { status: RectificationItem['status'] }) => {
-  const styles = {
-    red: 'bg-red-50 text-red-600',
-    yellow: 'bg-yellow-50 text-yellow-700',
-    green: 'bg-green-50 text-green-600',
-  };
-  const labels = {
-    red: '红灯',
-    yellow: '黄灯',
-    green: '绿灯',
-  };
-  return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${styles[status]}`}>
-      {labels[status]}
-    </span>
-  );
-};
-
-const getAggregatedProgress = (children: RectificationItem[]): RectificationItem['progress'] => {
-  const priority: Record<string, number> = {
-    'overdue': 4,
-    'pending': 3,
-    'accepting': 2,
-    'completed': 1
-  };
-  
-  let highestPriority = 0;
-  let aggregatedProgress: RectificationItem['progress'] = 'completed';
-  
-  children.forEach(child => {
-    const currentPriority = priority[child.progress] || 0;
-    if (currentPriority > highestPriority) {
-      highestPriority = currentPriority;
-      aggregatedProgress = child.progress;
-    }
-  });
-  
-  return aggregatedProgress;
-};
-
-const WORKPLACES: Workplace[] = [
-  {
-    id: 'dazhongsi',
-    name: '北京大钟寺广场',
-    address: '北京市海淀区北下关街道大钟寺广场',
-    area: '32,250',
-    entranceCount: '199',
-    workstations: '12,345'
-  },
-  {
-    id: 'shishangwanke',
-    name: '时尚万科中心',
-    address: '北京市朝阳区时尚万科中心',
-    area: '28,000',
-    entranceCount: '86',
-    workstations: '8,500'
-  }
-];
-
-export default function App() {
+export default function WorkplaceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
@@ -331,7 +27,7 @@ export default function App() {
   const [selectedRectificationFilter, setSelectedRectificationFilter] = useState<string | null>(null);
   const [selectedRiskType, setSelectedRiskType] = useState<string | null>(null);
   const [selectedSafetyStatus, setSelectedSafetyStatus] = useState<'red' | 'yellow' | 'green' | null>(null);
-  const [currentWorkplace, setCurrentWorkplace] = useState<Workplace>(WORKPLACES[0]);
+  const [currentWorkplace, setCurrentWorkplace] = useState<WorkplaceInfo>(WORKPLACES[0]);
   const [isWorkplaceDrawerOpen, setIsWorkplaceDrawerOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isTaskDetailDrawerOpen, setIsTaskDetailDrawerOpen] = useState(false);
@@ -358,37 +54,7 @@ export default function App() {
   const [originalStatusByType, setOriginalStatusByType] = useState<Record<string, 'green' | 'orange' | 'red'>>({});
   const [calibratingReasonByType, setCalibratingReasonByType] = useState<Record<string, string>>({});
 
-  const [officeInfo, setOfficeInfo] = useState<OfficeInfo>({
-    builtYear: '2015',
-    moveInDate: '2018-05-20',
-    propertyType: '自持',
-    usage: '办公+商业',
-    rentalArea: '32,250',
-    totalArea: '45,000',
-    buildingInfo: 'C座1-20层，D座1-18层',
-    entranceCount: '199',
-    hasByteLogo: '是',
-    expansionPlan: '2026年Q3计划扩租B座5-8层',
-    emergencyResources: {
-      fireStations: [
-        { id: 'fire-1', name: '北下关消防救援站', distance: '1.2', address: '海淀区学院南路51号', phone: '010-62255119', driveTime: '3 ～ 5' },
-        { id: 'fire-2', name: '中关村消防救援站', distance: '2.3', address: '海淀区中关村大街18号', phone: '010-62555119', driveTime: '6 ～ 10' },
-        { id: 'fire-3', name: '五道口消防救援站', distance: '3.1', address: '海淀区成府路28号', phone: '010-62355119', driveTime: '8 ～ 12' }
-      ],
-      hospitals: [
-        { id: 'hospital-1', name: '北京大学口腔医院', distance: '0.8', address: '海淀区中关村南大街22号', phone: '010-62179977', driveTime: '2 ～ 4' },
-        { id: 'hospital-2', name: '北京博爱医院', distance: '1.5', address: '海淀区皂君庙路10号', phone: '010-62266666', driveTime: '4 ～ 6' },
-        { id: 'hospital-3', name: '中关村医院', distance: '2.0', address: '海淀区中关村南路12号', phone: '010-62553000', driveTime: '5 ～ 8' },
-        { id: 'hospital-4', name: '海淀医院', distance: '2.8', address: '海淀区中关村大街29号', phone: '010-82693000', driveTime: '7 ～ 12' }
-      ],
-      policeStations: [
-        { id: 'police-1', name: '大钟寺派出所', distance: '0.6', address: '海淀区皂君庙路5号', phone: '010-62255110', driveTime: '2 ～ 3' },
-        { id: 'police-2', name: '中关村派出所', distance: '1.8', address: '海淀区中关村大街27号', phone: '010-62555110', driveTime: '4 ～ 7' },
-        { id: 'police-3', name: '五道口派出所', distance: '2.5', address: '海淀区成府路28号', phone: '010-62355110', driveTime: '6 ～ 10' },
-        { id: 'police-4', name: '海淀派出所', distance: '3.2', address: '海淀区海淀大街30号', phone: '010-62655110', driveTime: '8 ～ 14' }
-      ]
-    }
-  });
+  const [officeInfo, setOfficeInfo] = useState<OfficeInfo>(INITIAL_OFFICE_INFO);
   const [isOfficeDrawerOpen, setIsOfficeDrawerOpen] = useState(false);
   const [editingOfficeInfo, setEditingOfficeInfo] = useState<OfficeInfo>(officeInfo);
 
@@ -450,59 +116,9 @@ export default function App() {
   const riskRef = useRef<HTMLDivElement>(null);
   const officeRef = useRef<HTMLDivElement>(null);
 
-  const riskTabs = ['出入安全', '消防安全', '人身安全', '客诉', '极端天气/自然灾害', '交通事故/拥堵', '办公/园区秩序', '财产损失'];
+  const riskTabs = RISK_TABS;
 
-  const [riskAssessmentData, setRiskAssessmentData] = useState<Record<string, RiskAssessmentData>>({
-    '出入安全': {
-      name: '出入安全',
-      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">北京大钟寺广场为开放式自持园区，现运营的C座和D座由商场改造成的办公室，楼宇布局复杂，需要防范的出入口数量接近200个，其中全员可通行出入口数共42个，包括23个无安保值守出入口，和14个临近商业区域出入口，外部人员（外卖、顾客、代驾等）尾随误入风险高。</p><p class="text-sm text-text-body leading-relaxed">9-11月大钟寺现场响应各类闯入报警（尾随、强开等）共2191次，外部人员真实闯入事件共10起，其中9起均为商业区域人员误入。</p>',
-      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">管控措施：对远程和现场响应安保人员定期开展出入管理专项培训和模拟演练，持续提升异常人员识别、追踪和拦截能力；临近商业出入口位置增加更为醒目的办公区域提示和商业区域引导标识，降低误入风险；增加周界门检查和测试频次，发现设备异常及时同步技防团队跟进维修。</p><p class="text-sm text-text-body leading-relaxed mb-2">人防配置：对临近商业区域且高频（月均大于3起）发生外部人员误入工区事件（如D座B2层餐厅、B1层4号电梯厅入口等），在工作时间增设2名安保固定岗值守；通行高峰期间安排巡视岗支持临近商业区的无安保值守出入口身份查验。</p><p class="text-sm text-text-body leading-relaxed mb-2">技防配置：大钟寺园区共配置矮闸机7组、高闸机10组、平开门禁7个、旋转门15组、刷卡立柱3个，以实现防线二技术手段管控；大钟寺园区共安装3,472个监控探头，可有效追踪或回查闯入人员行动轨迹。</p><p class="text-sm text-text-body leading-relaxed">人技联动：通过人/技防联动，落实闯入报警响应机制，实现安保快速响应、追踪和拦截外部入侵人员。</p>',
-      updateTime: '2026-03-15 10:00'
-    },
-    '消防安全': {
-      name: '消防安全',
-      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">固有消防风险：大钟寺C座和D座均为高层建筑（据建筑防火设计规范，超过24米的非单层公共建筑为高层建筑），且均设有中庭，建筑火灾竖向蔓延速度快，人员垂直疏散距离长，疏散困难，外部救援难度大。</p><p class="text-sm text-text-body leading-relaxed mb-2">主要消防风险：大钟寺C座和D座均配置了位于地下的餐饮楼层，电气设备数量多，电气火灾风险较高；建筑内的厨房均使用天然气，存在燃气泄漏的消防风险；地下车库设有电动车充电桩，电动车起火扑救难度大。</p><p class="text-sm text-text-body leading-relaxed">其它消防风险：大钟寺楼内隐蔽空间较多，隐蔽空间存在堆物风险；园区处于边运营、边施工建设阶段，运营与施工风险叠加易引发消防安全风险。</p>',
-      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">固有风险防护：保障消防设施的正常运行，大钟寺配置了两名维保人员日间常驻现场，夜间15分钟响应，2小时到达现场，能够确保当消防设施出现故障时及时维修；组织同学进行全楼疏散演习，确保同学熟悉疏散路径，掌握疏散知识。</p><p class="text-sm text-text-body leading-relaxed mb-2">主要风险防护：组织餐饮供应商进行每日和每周防火巡查，定期检查电气设施和燃气设施的运行状态；制定地下车库新能源汽车火灾扑救方案，采购并补充推车式水基型灭火器等初期灭火工具，完善充电桩配电设施过载、故障断电等安全保护功能。</p><p class="text-sm text-text-body leading-relaxed mb-2">其它风险防护：定期组织隐蔽空间的联合巡检，及时消除隐患；消防运营团队在做好日常运营管理的同时，与地产团队配合将新建区域消防设备设施接入消防系统，施工完成前三个月消防团队开始介入检查，监督总包整改，最终验收阶段消防团队负责承接查验，降低运营和施工交接区域的消防风险。</p><p class="text-sm text-text-body leading-relaxed mb-2">消防人力配置：大钟寺E栋设置一个集中消防控制室，全年24h双人值班，每班2人，值班人员均持证上岗(中级消防设施操作员证书)；人员配置13人：管理岗1人（消防主管）、技术员4人（消防技术员）、操作员8人。</p><p class="text-sm text-text-body leading-relaxed mb-2">安保兼职消防队：大钟寺兼职微消队共计118人（含安全经理2人，领班7人）：其中1号楼61人，2号楼57人，满足24H不间断值岗，每班不少于20人要求；每月度内部演练比赛，每季度组织开展消防应急培训演练。</p><p class="text-sm text-text-body leading-relaxed mb-2">消防系统/设施：大钟寺园区配有功能良好的消防系统和末端设备，主要包括火灾自动报警系统、电气火灾监控系统、消防电源监控系统、消火栓系统、自动喷水灭火系统、防排烟系统、防火门监控系统、气体灭火系统、疏散指示应急照明系统、燃气报警系统、厨房灭火系统、防火分隔设施（防火卷帘、挡烟垂壁）共12类。</p><p class="text-sm text-text-body leading-relaxed">微型消防站物资：大钟寺园区配有消防器材柜共3个：C座/D座和E座（消防中控室）各配置1套消防器材柜；消防应急包6套，C座和D座各配置3套，含防毒面具、应急手电、灭火器等，配置在现场安保值班室，以及B3和B4层车库岗亭内。</p>',
-      updateTime: '2026-03-15 10:00'
-    },
-    '人身安全': {
-      name: '人身安全',
-      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">大钟寺园区部分配套设施（停车场、穿梭车站等）位于园区外围，距离办公楼宇较远，现有工区SOS资源难以确保园区周边紧急医疗事件的内部响应时效（&lt;4mins到场）。</p><p class="text-sm text-text-body leading-relaxed">9-11月大钟寺园区外围SOS医疗响应事件共3起（其中中风险2起、低风险1起），平均响应时效&gt;5mins。</p>',
-      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">管控措施：通过不断开展专项培训和实操演练，持续提升SOS值班号的沟通技巧和现场安保的急救响应能力，确保能够快速且准确获取求救人员的位置信息，提升安保响应效率；外围固定岗位增配AED+FAK，可快速取用响应园区周边紧急医疗需求，保障响应时效。</p><p class="text-sm text-text-body leading-relaxed mb-2">SOS组员配置：C座（1号楼）SOS小组正式成员14人，预备3人，一共17人；D座（2号楼）SOS小组正式成员15人，预备9人，一共24人。</p><p class="text-sm text-text-body leading-relaxed mb-2">安保配置：C座（1号楼）持有急救证保安共29人（安保员25人，管理岗4人）；D座（2号楼）持有急救证保安共27人（安保员22人，管理岗5人）。</p><p class="text-sm text-text-body leading-relaxed">SOS物资配置：C座（1号楼）配置AED和FAK各13个；D座（2号楼）配置AED和FAK各11个。</p>',
-      updateTime: '2026-03-15 10:00'
-    },
-    '客诉': {
-      name: '客诉',
-      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">外墙悬挂多个字节相关业务logo，百度/高德地图中均显示"总部"字样，被外界认为是抖音北京总部，导致客诉量大，9-11月大钟寺现场共接待客诉事件425起，承接北京区域53%的客诉量，其中涉及堵门、拉横幅等中风险及以上客诉事件3起，虽风险客诉会引导至临近盈都职场处置，但仍有部分人员会折返回大钟寺采取闹访、滞留等手段施压，且园区内配有"1733商业区"，人流量大，舆情风险高。</p><p class="text-sm text-text-body leading-relaxed">引导至盈都职场原因：大钟寺园区人流量大、临近三环辅路，发生极端闹访事件易引起政府关注，盈都距离大钟寺步行10分钟，位置相对偏僻，人流量小，风险可控。</p>',
-      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">管控措施：培养并推荐更多高潜力保安参与兼职客诉经理认证培训和评估，着力提升现场客诉接待沟通能力；季度开展对现有安保人员的极端客诉应急响应培训和实操演练，持续提升现场突发事件处置能力；与PA、属地派出所紧密配合，闹访案件明确告诫客诉人前往盈都职场处理。</p><p class="text-sm text-text-body leading-relaxed mb-2">人防配置：临近的方恒职场常驻1名客诉经理，大钟寺现场常驻3名安保认证兼职客诉岗；大钟寺C/D座可抽掉各4名巡视岗和1名管理岗响应各类突发事件；防暴队伍共计20人，分为2队，均接受过属地公安机关的防暴培训和联合演练。</p><p class="text-sm text-text-body leading-relaxed mb-2">物资配置：配置防暴柜共4组，各类防暴器材50个，伞式警示围挡20组。</p><p class="text-sm text-text-body leading-relaxed mb-2">线下管控：安保及时使用围挡（或黑伞）对极端行为进行遮挡，阻止拍摄；安保对周围警戒，疏散围观人员，礼貌劝止拍摄；当客诉人员执意不删除拍摄内容，及时同步警方，劝导客诉人员删除。</p><p class="text-sm text-text-body leading-relaxed">线上联动：实时同步PR，对园区进行电子围栏布控，及时监控并处置舆情。</p>',
-      updateTime: '2026-03-15 10:00'
-    },
-    '极端天气/自然灾害': {
-      name: '极端天气/自然灾害',
-      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">极端天气风险：北京地区夏季多暴雨、雷电等极端天气，冬季多暴雪、大风等极端天气，可能对园区运营造成影响。</p><p class="text-sm text-text-body leading-relaxed">自然灾害风险：园区地处地震带边缘，存在地震风险；周边地势较低，存在内涝风险。</p>',
-      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">预警识别：建立极端天气预警机制，与气象部门保持实时联动，确保及时识别各类极端天气预警。</p><p class="text-sm text-text-body leading-relaxed mb-2">应急预案：制定极端天气和自然灾害应急预案，定期组织应急演练，确保人员熟悉应急处置流程。</p><p class="text-sm text-text-body leading-relaxed mb-2">物资储备：储备必要的应急物资，包括防汛物资、防寒物资、应急照明设备等。</p>',
-      updateTime: '2026-03-15 10:00'
-    },
-    '交通事故/拥堵': {
-      name: '交通事故/拥堵',
-      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">交通拥堵：园区临近三环辅路，早晚高峰期间交通拥堵严重，员工通勤和访客来访受影响。</p><p class="text-sm text-text-body leading-relaxed">交通事故：园区周边车流量大，存在交通事故风险；园区内停车位紧张，车辆剐蹭时有发生。</p>',
-      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">交通规划：合理规划园区交通设施和动线，确保车流和人流有序通行。</p><p class="text-sm text-text-body leading-relaxed mb-2">交通管理：制定合理的交通管理方案，安排专人指挥交通，确保高峰期通行顺畅。</p><p class="text-sm text-text-body leading-relaxed mb-2">安保执行：加强安保人员交通管理培训，确保交通管理方案有效执行。</p>',
-      updateTime: '2026-03-15 10:00'
-    },
-    '办公/园区秩序': {
-      name: '办公/园区秩序',
-      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">吸烟违规：部分员工在非吸烟区吸烟，存在火灾隐患，影响办公环境。</p><p class="text-sm text-text-body leading-relaxed">噪音干扰：办公区噪音超标，影响员工工作效率，易引发矛盾冲突。</p>',
-      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">人防配置：加强巡逻检查，在重点区域设置禁烟标识，安排专人劝阻违规行为。</p><p class="text-sm text-text-body leading-relaxed">管理措施：制定办公区秩序管理制度，开展文明办公宣传，建立违规举报机制。</p>',
-      updateTime: '2026-03-15 10:00'
-    },
-    '财产损失': {
-      name: '财产损失',
-      riskFeatures: '<p class="text-sm text-text-body leading-relaxed mb-2">资产丢失：园区面积大，出入口多，存在贵重物品丢失风险。</p><p class="text-sm text-text-body leading-relaxed">监控盲区：部分区域监控覆盖不足，发生事件后难以追溯。</p>',
-      protectionMeasures: '<p class="text-sm text-text-body leading-relaxed mb-2">技防配置：全量覆盖 3472 个监控探头，定期检查监控设备运行状态。</p><p class="text-sm text-text-body leading-relaxed">管理措施：建立资产登记管理制度，加强贵重物品保管，定期开展安全巡查。</p>',
-      updateTime: '2026-03-15 10:00'
-    }
-  });
-
+  const [riskAssessmentData, setRiskAssessmentData] = useState<Record<string, RiskAssessmentData>>(INITIAL_RISK_ASSESSMENT_DATA);
   const [isRiskDrawerOpen, setIsRiskDrawerOpen] = useState(false);
   const [editingRiskTab, setEditingRiskTab] = useState<string>('');
   const [editingRiskFeatures, setEditingRiskFeatures] = useState('');
@@ -510,10 +126,7 @@ export default function App() {
   const [activeEditor, setActiveEditor] = useState<'riskFeatures' | 'protectionMeasures' | null>(null);
   const [expandedEmergencyTypes, setExpandedEmergencyTypes] = useState<string[]>([]);
 
-  const riskTypeToRectificationTypeMap: Record<string, string> = {
-    '出入安全': '出入风险',
-    '消防安全': '消防风险'
-  };
+  const riskTypeToRectificationTypeMap = RISK_TYPE_TO_RECTIFICATION_MAP;
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -882,47 +495,43 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Header */}
-      <header className="h-[52px] bg-bg-overlay border-b border-divider-light flex items-center px-3 shrink-0 gap-3 z-20">
-        <div className="flex items-center gap-1.5">
-          <div className="w-8 h-8 flex items-center justify-center rounded-md text-text-caption">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3.79115 10.0938L3.79009 10.0947L3.77946 10.088L3.75395 10.0717L1.90886 8.8846L1.89186 8.87308L0.0053142 7.65913L0 7.65625V21.9991H17.3381V18.5761H3.79115V10.0938Z" fill="#0051F6"/>
-              <path d="M20.207 6.26446L20.2092 22.0008H24.0003V9.37468L20.207 6.25391V6.26446Z" fill="#00BCFF"/>
-              <path d="M0.0053142 7.66L3.75395 10.0725L3.77946 10.0889L3.79009 10.0956L3.79115 10.0946L3.92613 10.0399L13.547 6.8846V15.9417H17.3381V2L0 7.65712L0.0053142 7.66Z" fill="#3C8BFF"/>
-            </svg>
-          </div>
-        </div>
-        <h1 className="text-[17px] font-semibold text-text-title tracking-tight">物理安全 Profile</h1>
-      </header>
-
-      <div className="flex flex-1 overflow-hidden gap-0">
+      <div className="flex h-full overflow-hidden gap-0">
         {/* Main Content */}
         <main className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto bg-bg-body" ref={contentRef} style={{ marginLeft: 0, paddingLeft: 0 }}>
-            <div className="max-w-full pb-10">
+            <div className="max-w-full pb-10 flex flex-col items-center">
+              {/* Breadcrumb */}
+              <div className="w-full max-w-[1000px] mx-auto mt-[12px] mb-[12px]">
+                <div className="flex items-center text-sm text-text-caption">
+                  <span className="cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/')}>职场安全档案</span>
+                  <span className="mx-2">/</span>
+                  <span className="text-text-title font-medium">{currentWorkplace.name}</span>
+                </div>
+              </div>
+
               {/* Card 1: Workplace Info */}
-              <div className="relative border-b border-divider-light bg-white sticky top-0 z-40">
-                <div className="relative z-10 p-4 pb-0 max-w-[1000px] mx-auto">
-                  <button
-                    onClick={() => navigate('/')}
-                    className="inline-flex items-center gap-1.5 pr-2.5 py-1.5 hover:bg-bg-overlay rounded-lg transition-colors text-primary text-sm font-medium mb-2"
-                  >
-                    <ArrowLeft size={16} className="text-primary" />
-                    返回列表
-                  </button>
-                  <div className="flex items-start gap-4">
-                    <img 
-                      src={`https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=现代化商业写字楼建筑外观&image_size=landscape_4_3`}
-                      alt={currentWorkplace.name}
-                      className="w-[100px] h-[60px] object-cover rounded-lg shrink-0 mt-1"
-                    />
-                    <div className="flex-1">
+              <div className="relative border border-divider-light bg-white sticky top-0 z-40 max-w-[1000px] w-full mx-auto rounded-[12px] overflow-hidden">
+                <div className="relative z-10 p-4 pb-0">
+                    <div className="flex items-center gap-4">
+                       <img 
+                         src={`https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=现代化商业写字楼建筑外观&image_size=landscape_4_3`}
+                         alt={currentWorkplace.name}
+                         className="w-[72px] h-[72px] object-cover rounded-lg shrink-0"
+                       />
+                      <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h2 className="font-semibold text-text-title" style={{ fontSize: '22px' }}>{currentWorkplace.name}</h2>
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600">
+                          <h2 className="font-semibold text-text-title" style={{ fontSize: '24px' }}>{currentWorkplace.name}</h2>
+                        <Tag
+                          color="error"
+                          size="small"
+                          icon={
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M13.732 2c-.77-1.333-2.694-1.333-3.464 0L.742 19c-.77 1.334.192 3 1.732 3h19.052c1.54 0 2.502-1.666 1.733-3L13.732 2ZM10.75 8.25a.75.75 0 0 1 .75-.75h1a.75.75 0 0 1 .75.75v6a.75.75 0 0 1-.75.75h-1a.75.75 0 0 1-.75-.75v-6Zm0 8.5a.75.75 0 0 1 .75-.75h1a.75.75 0 0 1 .75.75v1a.75.75 0 0 1-.75.75h-1a.75.75 0 0 1-.75-.75v-1Z" fill="currentColor" />
+                            </svg>
+                          }
+                        >
                           红灯
-                        </span>
+                        </Tag>
                       </div>
                       
                       <div className="flex flex-wrap items-center gap-y-2 mt-3">
@@ -971,7 +580,7 @@ export default function App() {
               </div>
 
               {/* Card 2: Safety Status & Rectification */}
-              <div id="card-overview" ref={overviewRef} className="relative rounded-xl mt-3 border border-divider-light bg-white max-w-[1000px] mx-auto">
+              <div id="card-overview" ref={overviewRef} className="relative rounded-xl mt-3 border border-divider-light bg-white max-w-[1000px] w-full mx-auto">
                 <div className="relative">
 
                   
@@ -993,16 +602,20 @@ export default function App() {
                           </svg>
                           <span className="text-lg text-red-600" style={{ marginLeft: '8px', lineHeight: '1', verticalAlign: 'middle', fontWeight: '700', fontSize: '16px' }}>2 项指标需关注</span>
                         </div>
-                        <button 
+                        <Button 
                           onClick={openCalibrationDrawer}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all"
+                          type="outlined"
+                          color="primary"
+                          size="small"
+                          icon={
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                              <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="currentColor"/>
+                              <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="currentColor"/>
+                            </svg>
+                          }
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="#1456F0"/>
-                            <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="#1456F0"/>
-                          </svg>
                           校准
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1012,13 +625,17 @@ export default function App() {
 
                     {/* Warning Group */}
                     <div className="rounded-lg p-0 mb-7">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                         {SAFETY_RISK_TYPES.slice(0, 2).map((riskType, index) => {
                           const calibration = manualCalibrations[riskType.id];
                           const indicators = calibration ? calibration.calibratedIndicators : riskType.indicators;
                           const rectificationCount = getRectificationCountForRiskType(riskType.name);
                           return (
-                            <div key={riskType.id} className="rounded-xl overflow-hidden hover:opacity-90 transition-opacity border flex flex-col" style={{ borderColor: '#DEE0E3', borderWidth: '0.5px', minHeight: '160px' }}>
+                            <div 
+                              key={riskType.id} 
+                              className="rounded-xl overflow-hidden border flex flex-col" 
+                              style={{ borderColor: '#DEE0E3', borderWidth: '0.5px', minHeight: '160px' }}
+                            >
                               <div className="py-2 px-3">
                                 <div className="flex items-center gap-2">
                                   <svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1034,8 +651,8 @@ export default function App() {
                                   {indicators.map((indicator, idx) => {
                                     return (
                                       <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
-                                        <span className="text-text-caption flex-1">{indicator.label}</span>
-                                        <div className="flex items-center gap-2" style={{ paddingLeft: 0, paddingRight: 0, width: '100px' }}>
+                                        <span className="text-text-caption flex-1 truncate">{indicator.label}</span>
+                                        <div className="flex items-center gap-2 flex-shrink-0" style={{ width: '80px' }}>
                                           {indicator.status === 'green' ? (
                                             <svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                                               <circle cx="4" cy="4" r="4" fill="#32A645"/>
@@ -1049,7 +666,7 @@ export default function App() {
                                               <circle cx="4" cy="4" r="4" fill="#E8921C"/>
                                             </svg>
                                           )}
-                                          <span className="text-text-body font-medium">
+                                          <span className="text-text-body font-medium whitespace-nowrap">
                                             {indicator.value}
                                           </span>
                                         </div>
@@ -1059,7 +676,7 @@ export default function App() {
                                 </div>
                               </div>
                               {(index === 0 || index === 2) && (
-                                <div className="bg-[#f8f9fa] p-3" style={{ borderRadius: '8px', marginBottom: '12px', marginLeft: '12px', marginRight: '12px' }}>
+                                <div className="bg-[#f8f9fa] p-3 mx-3 rounded-lg mb-3">
                                   <p className="text-xs text-text-caption">
                                     校准原因：近期地铁改造,导致出入口人流激增,高峰期尾随情况加剧,但保安无法逐一甄别。
                                   </p>
@@ -1067,12 +684,15 @@ export default function App() {
                               )}
                               <div className="bg-white p-3 border-t flex items-center justify-between mt-auto" style={{ borderColor: '#f3f4f6' }}>
                                 <span className="text-xs text-text-caption">{rectificationCount} 项整改任务</span>
-                                <button 
-                                  className="text-xs text-primary hover:underline font-medium"
+                                <Button 
+                                  type="text"
+                                  color="primary"
+                                  size="small"
                                   onClick={() => handleViewRectification(riskType.name)}
+                                  style={{ padding: 0 }}
                                 >
                                   查看
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           );
@@ -1081,32 +701,33 @@ export default function App() {
                     </div>
                     {/* Stable Group */}
                     <div className="rounded-lg p-0">
-                      <div className="flex items-center mb-2">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
                         <div className="flex items-center gap-1.5">
                           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M0.833252 9.99998C0.833252 15.0625 4.93742 19.1666 9.99992 19.1666C15.0624 19.1666 19.1666 15.0625 19.1666 9.99998C19.1666 4.93748 15.0624 0.833313 9.99992 0.833313C4.93742 0.833313 0.833252 4.93748 0.833252 9.99998ZM13.162 7.7713C13.4847 7.44854 14.0095 7.4568 14.3322 7.77964C14.6548 8.10248 14.6631 8.62729 14.3402 8.94997C12.7678 10.5216 11.194 12.092 9.62369 13.6657C9.29783 13.9923 8.76869 13.9923 8.44274 13.6658C7.62218 12.8439 6.80034 12.0232 5.97887 11.2021C5.65654 10.88 5.66611 10.3557 5.98819 10.0333C6.31028 9.71087 6.83449 9.70124 7.15675 10.0235L9.03326 11.9L13.162 7.7713Z" fill="#32A645"/>
                           </svg>
-                          <span className="text-sm font-medium" style={{ color: '#258832', fontSize: '16px' }}>其余 5 项指标运行平稳</span>
-                          <button 
-                            onClick={() => setShowStableDetails(!showStableDetails)}
-                            className="text-sm text-primary hover:underline font-medium flex items-center gap-1"
-                            style={{ marginLeft: '6px' }}
-                          >
-                            {showStableDetails ? '收起详情' : '查看详情'}
-                            <ChevronDown size={14} className={`transition-transform ${showStableDetails ? 'rotate-180' : ''}`} />
-                          </button>
+                          <span className="text-sm font-medium" style={{ color: '#258832', fontSize: '16px' }}>5 项指标运行平稳</span>
                         </div>
+                        <Button 
+                          type="text"
+                          color="primary"
+                          onClick={() => setShowStableDetails(!showStableDetails)}
+                          endIcon={<ChevronDown size={14} className={`transition-transform ${showStableDetails ? 'rotate-180' : ''}`} />}
+                          style={{ padding: 0 }}
+                        >
+                          {showStableDetails ? '收起详情' : '查看详情'}
+                        </Button>
                       </div>
                       {showStableDetails && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-3">
                           {SAFETY_RISK_TYPES.slice(2).map(riskType => {
                             const calibration = manualCalibrations[riskType.id];
                             const indicators = calibration ? calibration.calibratedIndicators : riskType.indicators;
                             return (
                               <div 
                                 key={riskType.id} 
-                                className="bg-bg-overlay rounded-xl p-3 flex flex-col transition-all duration-200 border"
-                                style={{ borderColor: '#DEE0E3', borderWidth: '0.5px', minHeight: '160px' }}
+                                className="bg-bg-overlay rounded-xl p-3 flex flex-col border h-full"
+                                style={{ borderColor: '#DEE0E3', borderWidth: '0.5px' }}
                               >
                                 <div className="flex items-center">
                                   <div className="flex flex-col gap-1">
@@ -1123,12 +744,11 @@ export default function App() {
                                 
                                 <div className="mt-3 flex flex-col gap-2">
                                   {indicators.map((indicator, idx) => {
-                                    const StatusIcon = indicator.status === 'green' ? CheckCircle2 : (indicator.status === 'orange' ? AlertCircle : null);
                                     return (
                                       <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
-                                        <span className="text-text-caption flex-1">{indicator.label}</span>
-                                        <div className="flex items-center gap-1.5">
-                                          <span className="text-text-body font-medium flex items-center gap-1.5" style={{ width: '100px' }}>
+                                        <span className="text-text-caption flex-1 truncate">{indicator.label}</span>
+                                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                                          <span className="text-text-body font-medium flex items-center gap-1.5" style={{ width: '80px' }}>
                                             {indicator.status === 'green' ? (
                                               <svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                 <circle cx="4" cy="4" r="4" fill="#32A645"/>
@@ -1142,7 +762,7 @@ export default function App() {
                                                 <circle cx="4" cy="4" r="4" fill="#E8921C"/>
                                               </svg>
                                             )}
-                                            {indicator.value}
+                                            <span className="whitespace-nowrap">{indicator.value}</span>
                                           </span>
                                         </div>
                                       </div>
@@ -1160,7 +780,7 @@ export default function App() {
               </div>
 
               {/* Cards Container */}
-              <div className="mt-3 flex flex-col gap-4 max-w-[1000px] mx-auto">
+              <div className="mt-3 flex flex-col gap-4 max-w-[1000px] w-full mx-auto px-0">
                 {/* Rectification Progress Card */}
                 <section id="card-rectification" ref={rectificationRef} className="bg-bg-overlay rounded-xl border border-divider-light overflow-hidden">
                   <div className="pt-4 px-4 pb-0">
@@ -1258,12 +878,14 @@ export default function App() {
                                     >
                                       <ChevronRight size={16} />
                                     </button>
-                                    <button 
-                                      className="text-primary font-medium hover:underline"
+                                    <Button 
+                                      type="text"
+                                      color="primary"
                                       onClick={() => openTaskDetail(row)}
+                                      style={{ padding: 0 }}
                                     >
                                       {row.type}-{row.ticketNumber}
-                                    </button>
+                                    </Button>
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-sm text-text-body">
@@ -1291,12 +913,14 @@ export default function App() {
                                     className="bg-bg-content-base/50 border-b border-divider-light"
                                   >
                                     <td className="px-4 py-3 text-sm text-text-body pl-10">
-                                      <button 
-                                        className="text-primary font-medium hover:underline"
+                                      <Button 
+                                        type="text"
+                                        color="primary"
                                         onClick={() => openTaskDetail(child)}
+                                        style={{ padding: 0 }}
                                       >
                                         {child.ticketNumber}
-                                      </button>
+                                      </Button>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-text-body"></td>
                                     <td className="px-4 py-3 text-sm text-text-body" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{child.solution}</td>
@@ -1308,7 +932,9 @@ export default function App() {
                                       </div>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-text-body cursor-pointer hover:text-primary">{child.planDate}</td>
-                                    <td className="px-4 py-3 text-sm text-text-body">{child.finishDate || '-'}</td>
+                                    <td className="px-4 py-3 text-sm text-text-body">
+                                      {child.progress === 'overdue' ? '-' : (child.finishDate || '-')}
+                                    </td>
                                 </motion.tr>
                               ))}
                             </AnimatePresence>
@@ -1325,13 +951,20 @@ export default function App() {
                 <section id="card-risk" ref={riskRef} className="bg-bg-overlay rounded-xl border border-divider-light overflow-hidden">
                   <div className="p-4 flex items-center justify-between">
                     <h3 className="text-base font-medium text-text-title">风险评估</h3>
-                    <button onClick={() => openRiskDrawer(riskTabs[activeRiskTab])} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="#1456F0"/>
-                        <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="#1456F0"/>
-                      </svg>
+                    <Button 
+                      onClick={() => openRiskDrawer(riskTabs[activeRiskTab])}
+                      type="outlined"
+                      color="primary"
+                      size="small"
+                      icon={
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="currentColor"/>
+                          <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="currentColor"/>
+                        </svg>
+                      }
+                    >
                       编辑
-                    </button>
+                    </Button>
                   </div>
 
                   {/* AI Summary */}
@@ -1408,16 +1041,20 @@ export default function App() {
                     <div className="flex justify-between items-center mb-6">
                       <h3 className="text-base font-medium text-text-title">职场信息</h3>
                       {hasEditPermission && (
-                        <button 
+                        <Button 
                           onClick={openOfficeDrawer}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-primary rounded-lg text-primary text-sm font-medium hover:bg-divider-light transition-all"
+                          type="outlined"
+                          color="primary"
+                          size="small"
+                          icon={
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                              <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="currentColor"/>
+                              <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="currentColor"/>
+                            </svg>
+                          }
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                            <path d="M10.2506 4.22599L10.2467 4.22234L10.4623 4.0067C10.6897 3.77932 10.6902 3.41081 10.4634 3.18283L8.46015 1.16901L8.45906 1.16792C8.23126 0.940119 7.86191 0.940119 7.63411 1.16792L7.22271 1.57932L7.22845 1.58509L1.16797 7.69221V9.91705C1.16797 10.2392 1.42914 10.5004 1.7513 10.5004H3.97615L10.2506 4.22599ZM8.34127 4.4529L7.16606 3.27768L8.03296 2.39383L9.21313 3.5802L8.34127 4.4529ZM6.3491 4.11064L7.51672 5.27827L3.48411 9.31476H3.48233L2.35361 8.18603V8.18425L6.3491 4.11064Z" fill="#1456F0"/>
-                            <path d="M1.7513 11.6671C1.42914 11.6671 1.16797 11.9282 1.16797 12.2504C1.16797 12.5726 1.42914 12.8337 1.7513 12.8337H12.2513C12.5735 12.8337 12.8346 12.5726 12.8346 12.2504C12.8346 11.9282 12.5735 11.6671 12.2513 11.6671H1.7513Z" fill="#1456F0"/>
-                          </svg>
                           编辑
-                        </button>
+                        </Button>
                       )}
                     </div>
                     
@@ -1612,6 +1249,7 @@ export default function App() {
                     <button
                       onClick={saveRiskAssessment}
                       className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                      style={{ color: '#ffffff' }}
                     >
                       保存
                     </button>
@@ -1633,9 +1271,10 @@ export default function App() {
                         }}
                         className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                           editingRiskTab === tab
-                            ? 'bg-primary text-white'
+                            ? 'text-[#1454f0]'
                             : 'bg-bg-content-base text-text-body hover:bg-divider-light'
                         }`}
+                        style={editingRiskTab === tab ? { backgroundColor: '#e0e9ff', color: '#1454f0' } : undefined}
                       >
                         {tab}
                       </button>
@@ -1966,7 +1605,7 @@ export default function App() {
                                   return (
                                     <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
                                       <span className="text-text-caption flex-1">{indicator.label}</span>
-                                      <div className="flex items-center gap-2" style={{ paddingLeft: 0, paddingRight: 0, width: '100px' }}>
+                                      <div className="flex items-center gap-2" style={{ paddingLeft: 0, paddingRight: 0, width: '80px' }}>
                                         {indicator.status === 'green' ? (
                                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-tag-green-text">
                                             <circle cx="12" cy="12" r="10"></circle>
@@ -2157,15 +1796,19 @@ export default function App() {
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-sm font-medium text-text-title">周边消防队</h4>
-                          <button
+                          <Button
                             onClick={() => addEmergencyResource('fireStations')}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-medium hover:bg-primary/20 transition-all"
+                            type="outlined"
+                            color="primary"
+                            size="small"
+                            icon={
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M7 1.1665C7.3866 1.1665 7.7 1.4799 7.7 1.8665V6.30017H12.1337C12.5203 6.30017 12.8337 6.61357 12.8337 7.00017C12.8337 7.38677 12.5203 7.70017 12.1337 7.70017H7.7V12.1338C7.7 12.5204 7.3866 12.8338 7 12.8338C6.6134 12.8338 6.3 12.5204 6.3 12.1338V7.70017H1.86633C1.47973 7.70017 1.16633 7.38677 1.16633 7.00017C1.16633 6.61357 1.47973 6.30017 1.86633 6.30017H6.3V1.8665C6.3 1.4799 6.6134 1.1665 7 1.1665Z" fill="currentColor"/>
+                              </svg>
+                            }
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                              <path d="M7 1.1665C7.3866 1.1665 7.7 1.4799 7.7 1.8665V6.30017H12.1337C12.5203 6.30017 12.8337 6.61357 12.8337 7.00017C12.8337 7.38677 12.5203 7.70017 12.1337 7.70017H7.7V12.1338C7.7 12.5204 7.3866 12.8338 7 12.8338C6.6134 12.8338 6.3 12.5204 6.3 12.1338V7.70017H1.86633C1.47973 7.70017 1.16633 7.38677 1.16633 7.00017C1.16633 6.61357 1.47973 6.30017 1.86633 6.30017H6.3V1.8665C6.3 1.4799 6.6134 1.1665 7 1.1665Z" fill="#1456F0"/>
-                            </svg>
                             新增
-                          </button>
+                          </Button>
                         </div>
                         <div className="space-y-3">
                           {editingOfficeInfo.emergencyResources.fireStations.map((station, index) => (
@@ -2240,15 +1883,19 @@ export default function App() {
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-sm font-medium text-text-title">周边医院</h4>
-                          <button
+                          <Button
                             onClick={() => addEmergencyResource('hospitals')}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-medium hover:bg-primary/20 transition-all"
+                            type="outlined"
+                            color="primary"
+                            size="small"
+                            icon={
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M7 1.1665C7.3866 1.1665 7.7 1.4799 7.7 1.8665V6.30017H12.1337C12.5203 6.30017 12.8337 6.61357 12.8337 7.00017C12.8337 7.38677 12.5203 7.70017 12.1337 7.70017H7.7V12.1338C7.7 12.5204 7.3866 12.8338 7 12.8338C6.6134 12.8338 6.3 12.5204 6.3 12.1338V7.70017H1.86633C1.47973 7.70017 1.16633 7.38677 1.16633 7.00017C1.16633 6.61357 1.47973 6.30017 1.86633 6.30017H6.3V1.8665C6.3 1.4799 6.6134 1.1665 7 1.1665Z" fill="currentColor"/>
+                              </svg>
+                            }
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                              <path d="M7 1.1665C7.3866 1.1665 7.7 1.4799 7.7 1.8665V6.30017H12.1337C12.5203 6.30017 12.8337 6.61357 12.8337 7.00017C12.8337 7.38677 12.5203 7.70017 12.1337 7.70017H7.7V12.1338C7.7 12.5204 7.3866 12.8338 7 12.8338C6.6134 12.8338 6.3 12.5204 6.3 12.1338V7.70017H1.86633C1.47973 7.70017 1.16633 7.38677 1.16633 7.00017C1.16633 6.61357 1.47973 6.30017 1.86633 6.30017H6.3V1.8665C6.3 1.4799 6.6134 1.1665 7 1.1665Z" fill="#1456F0"/>
-                            </svg>
                             新增
-                          </button>
+                          </Button>
                         </div>
                         <div className="space-y-3">
                           {editingOfficeInfo.emergencyResources.hospitals.map((hospital, index) => (
@@ -2323,15 +1970,19 @@ export default function App() {
                       <div>
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="text-sm font-medium text-text-title">周边派出所</h4>
-                          <button
+                          <Button
                             onClick={() => addEmergencyResource('policeStations')}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-medium hover:bg-primary/20 transition-all"
+                            type="outlined"
+                            color="primary"
+                            size="small"
+                            icon={
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M7 1.1665C7.3866 1.1665 7.7 1.4799 7.7 1.8665V6.30017H12.1337C12.5203 6.30017 12.8337 6.61357 12.8337 7.00017C12.8337 7.38677 12.5203 7.70017 12.1337 7.70017H7.7V12.1338C7.7 12.5204 7.3866 12.8338 7 12.8338C6.6134 12.8338 6.3 12.5204 6.3 12.1338V7.70017H1.86633C1.47973 7.70017 1.16633 7.38677 1.16633 7.00017C1.16633 6.61357 1.47973 6.30017 1.86633 6.30017H6.3V1.8665C6.3 1.4799 6.6134 1.1665 7 1.1665Z" fill="currentColor"/>
+                              </svg>
+                            }
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none">
-                              <path d="M7 1.1665C7.3866 1.1665 7.7 1.4799 7.7 1.8665V6.30017H12.1337C12.5203 6.30017 12.8337 6.61357 12.8337 7.00017C12.8337 7.38677 12.5203 7.70017 12.1337 7.70017H7.7V12.1338C7.7 12.5204 7.3866 12.8338 7 12.8338C6.6134 12.8338 6.3 12.5204 6.3 12.1338V7.70017H1.86633C1.47973 7.70017 1.16633 7.38677 1.16633 7.00017C1.16633 6.61357 1.47973 6.30017 1.86633 6.30017H6.3V1.8665C6.3 1.4799 6.6134 1.1665 7 1.1665Z" fill="#1456F0"/>
-                            </svg>
                             新增
-                          </button>
+                          </Button>
                         </div>
                         <div className="space-y-3">
                           {editingOfficeInfo.emergencyResources.policeStations.map((station, index) => (
@@ -2546,10 +2197,12 @@ export default function App() {
                       <span className="text-sm font-medium text-gray-500">计划完成日期</span>
                       <span className="text-sm text-gray-900">{selectedTask.planDate || '-'}</span>
                     </div>
-                    {selectedTask.finishDate && (
+                    {(selectedTask.progress === 'overdue' || selectedTask.finishDate) && (
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-gray-500">实际完成日期</span>
-                        <span className="text-sm text-gray-900">{selectedTask.finishDate}</span>
+                        <span className="text-sm text-gray-900">
+                          {selectedTask.progress === 'overdue' ? '-' : selectedTask.finishDate}
+                        </span>
                       </div>
                     )}
                   </div>

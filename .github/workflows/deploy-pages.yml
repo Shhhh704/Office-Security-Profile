@@ -23,9 +23,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: npm
-      - run: npm ci
+      # npm@10 在少量场景下会出现 "Exit handler never called"；
+      # 使用 npm install + lockfile 既能稳定安装，也能保证版本一致。
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,6 +1,5 @@
-# 因项目依赖字节内部私有包（@universe-design/*），
-# 无法在 GitHub Actions 公网环境执行 npm install，
-# 改为在本地构建后将 dist 推送到 gh-pages 分支，由 Pages 直接托管。
+# 因项目依赖 @universe-design/*，公网 CI 安装不稳定时，可仅用本工作流托管静态文件。
+# 本地执行：npm run publish:office-pages（构建 dist 并推送到本仓库 gh-pages，触发此 workflow）。
 name: Deploy to GitHub Pages
 
 on:

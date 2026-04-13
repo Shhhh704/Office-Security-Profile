@@ -162,7 +162,8 @@ export const MOCK_WORKPLACES: WorkplaceSummary[] = [
 export const WORKPLACES: WorkplaceInfo[] = [
   {
     id: 'dazhongsi',
-    name: '北京大钟寺广场',
+    name: '大钟寺广场',
+    city: '北京',
     address: '北京市海淀区北下关街道大钟寺广场',
     area: '32,250',
     entranceCount: '199',
@@ -171,6 +172,7 @@ export const WORKPLACES: WorkplaceInfo[] = [
   {
     id: 'shishangwanke',
     name: '时尚万科中心',
+    city: '北京',
     address: '北京市朝阳区时尚万科中心',
     area: '28,000',
     entranceCount: '86',

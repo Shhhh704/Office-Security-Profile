@@ -1,8 +1,10 @@
 import React from 'react';
 import { Tag } from '@universe-design/react';
 import type { RectificationItem } from '../types';
+import { useLocale } from '../i18n/LocaleContext';
 
 export const StatusBadge = ({ type }: { type: RectificationItem['progress'] }) => {
+  const { t } = useLocale();
   const styles = {
     overdue: 'bg-red-50 text-red-600',
     pending: 'bg-blue-50 text-blue-600',
@@ -17,7 +19,7 @@ export const StatusBadge = ({ type }: { type: RectificationItem['progress'] }) =
   };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${styles[type]}`}>
-      {labels[type]}
+      {t(labels[type])}
     </span>
   );
 };
@@ -58,11 +60,14 @@ const SAFETY_TAG_ICON: Record<string, React.ReactNode> = {
   green: CHECK_ICON,
 };
 
-export const SafetyStatusBadge = ({ status }: { status: RectificationItem['status'] }) => (
-  <Tag size="small" color={SAFETY_TAG_COLOR[status]} icon={SAFETY_TAG_ICON[status]}>
-    {SAFETY_TAG_LABEL[status]}
-  </Tag>
-);
+export const SafetyStatusBadge = ({ status }: { status: RectificationItem['status'] }) => {
+  const { t } = useLocale();
+  return (
+    <Tag size="small" color={SAFETY_TAG_COLOR[status]} icon={SAFETY_TAG_ICON[status]}>
+      {t(SAFETY_TAG_LABEL[status])}
+    </Tag>
+  );
+};
 
 export const getAggregatedProgress = (children: RectificationItem[]): RectificationItem['progress'] => {
   const priority: Record<string, number> = {

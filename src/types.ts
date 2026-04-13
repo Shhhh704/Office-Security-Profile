@@ -43,6 +43,7 @@ export interface WorkplaceSummary {
 export interface WorkplaceInfo {
   id: string;
   name: string;
+  city: string;
   address: string;
   area: string;
   entranceCount: string;

@@ -7,6 +7,7 @@ import LeftOutlined from '@universe-design/icons-react/LeftOutlined';
 import AddOutlined from '@universe-design/icons-react/AddOutlined';
 import { motion, AnimatePresence } from 'motion/react';
 import type { SafetyRiskType, ManualCalibration } from '../types';
+import { useLocale } from '../i18n/LocaleContext';
 
 type RiskStatus = 'red' | 'orange' | 'green';
 type ViewMode =
@@ -80,13 +81,14 @@ function StatusDot({ color, size = 8 }: { color: string; size?: number }) {
 }
 
 function FilledPill({ status }: { status: RiskStatus }) {
+  const { t } = useLocale();
   const s = STATUS_PILL_FILL[status];
   return (
     <span
       className="inline-flex items-center justify-center rounded-full text-sm leading-[22px]"
       style={{ width: 56, height: 32, backgroundColor: s.bg, color: s.text }}
     >
-      {STATUS_LABEL[status]}
+      {t(STATUS_LABEL[status])}
     </span>
   );
 }
@@ -100,6 +102,7 @@ function SelectablePill({
   selected: boolean;
   onClick?: () => void;
 }) {
+  const { t } = useLocale();
   const s = STATUS_PILL_FILL[status];
   return (
     <button
@@ -115,7 +118,7 @@ function SelectablePill({
         cursor: onClick ? 'pointer' : 'default',
       }}
     >
-      {STATUS_LABEL[status]}
+      {t(STATUS_LABEL[status])}
     </button>
   );
 }
@@ -161,8 +164,9 @@ function IndicatorCard({
   calibration?: ManualCalibration;
   actionSlot?: React.ReactNode;
 }) {
+  const { t, tr } = useLocale();
   const status = getOverallStatus(riskType, calibration);
-  const displayName = RISK_DISPLAY_NAMES[riskType.id] || riskType.name;
+  const displayName = t(RISK_DISPLAY_NAMES[riskType.id] || riskType.name);
   const indicators = calibration ? calibration.calibratedIndicators : riskType.indicators;
   const isCalibrated = !!calibration;
 
@@ -175,7 +179,7 @@ function IndicatorCard({
         <div className="flex items-center gap-2">
           <StatusDot color={STATUS_DOT_COLORS[status]} />
           <span className="text-sm font-medium text-[#1F2329] whitespace-nowrap">{displayName}</span>
-          {isCalibrated && <Tag size="small" color="neutral">人工校准</Tag>}
+          {isCalibrated && <Tag size="small" color="neutral">{tr('人工校准')}</Tag>}
         </div>
         {actionSlot}
       </div>
@@ -186,14 +190,14 @@ function IndicatorCard({
       <div className="flex justify-between gap-4">
         <div className="flex flex-col" style={{ gap: 4 }}>
           {indicators.map((ind, idx) => (
-            <span key={idx} className="text-xs text-[#1F2329] leading-5 whitespace-nowrap">{ind.label}</span>
+            <span key={idx} className="text-xs text-[#1F2329] leading-5 whitespace-nowrap">{tr(ind.label)}</span>
           ))}
         </div>
         <div className="flex flex-col shrink-0" style={{ gap: 4, width: 80 }}>
           {indicators.map((ind, idx) => (
             <div key={idx} className="flex items-center leading-5" style={{ gap: 4 }}>
               <StatusDot color={STATUS_DOT_COLORS[ind.status]} />
-              <span className="text-xs text-[#1F2329] whitespace-nowrap">{ind.value}</span>
+              <span className="text-xs text-[#1F2329] whitespace-nowrap">{tr(ind.value)}</span>
             </div>
           ))}
         </div>
@@ -203,9 +207,10 @@ function IndicatorCard({
 }
 
 function FormLabel({ label, required }: { label: string; required?: boolean }) {
+  const { tr } = useLocale();
   return (
     <div style={{ paddingBottom: 6 }}>
-      <span className="text-sm text-[#646A73] leading-[22px]">{label}</span>
+      <span className="text-sm text-[#646A73] leading-[22px]">{tr(label)}</span>
       {required && <span className="text-sm font-medium text-[#E22E28]">*</span>}
     </div>
   );
@@ -224,18 +229,19 @@ function RiskCard({
   onCalibrate?: () => void;
   onViewDetail?: () => void;
 }) {
+  const { tr } = useLocale();
   const overallStatus = getOverallStatus(riskType, calibration);
   const isCalibrated = !!calibration;
   const isHighestLevel = overallStatus === 'red' && !isCalibrated;
 
   const action = isCalibrated ? (
-    <Button type="text" size="small" color="primary" onClick={onViewDetail}>校准详情</Button>
+    <Button type="text" size="small" color="primary" onClick={onViewDetail}>{tr('校准详情')}</Button>
   ) : isHighestLevel ? (
-    <Tooltip title="红灯风险不可校准">
-      <span><Button type="text" size="small" color="primary" disabled>校准</Button></span>
+    <Tooltip title={tr('红灯风险不可校准')}>
+      <span><Button type="text" size="small" color="primary" disabled>{tr('校准')}</Button></span>
     </Tooltip>
   ) : (
-    <Button type="text" size="small" color="primary" onClick={onCalibrate}>校准</Button>
+    <Button type="text" size="small" color="primary" onClick={onCalibrate}>{tr('校准')}</Button>
   );
 
   return (
@@ -260,6 +266,7 @@ function OverviewView({
   onViewDetail: (id: string) => void;
   onClose: () => void;
 }) {
+  const { tr } = useLocale();
   const grouped = React.useMemo(() => {
     const red: SafetyRiskType[] = [];
     const orange: SafetyRiskType[] = [];
@@ -275,19 +282,19 @@ function OverviewView({
 
   return (
     <>
-      <DialogHeader title="风险校准" onClose={onClose} />
+      <DialogHeader title={tr('风险校准')} onClose={onClose} />
 
       <div className="flex-1 overflow-y-auto" style={{ padding: '0 24px' }}>
         <div className="flex flex-col" style={{ gap: 16 }}>
           <div style={{ paddingBottom: 8 }}>
-            <Notice showIcon type="info" message="仅支持将风险校准为更高风险等级，不可降级校准。" />
+            <Notice showIcon type="info" message={tr('仅支持将风险校准为更高风险等级，不可降级校准。')} />
           </div>
 
           {grouped.red.length > 0 && (
             <>
               <div className="flex items-center" style={{ gap: 6 }}>
                 <ReportFilled style={{ color: '#F54A45', fontSize: 16 }} />
-                <span className="text-sm font-medium text-[#1F2329]">异常风险</span>
+                <span className="text-sm font-medium text-[#1F2329]">{tr('异常风险')}</span>
               </div>
               <div className="grid grid-cols-2" style={{ gap: 16 }}>
                 {grouped.red.map((r) => (
@@ -311,7 +318,7 @@ function OverviewView({
             <>
               <div className="flex items-center" style={{ gap: 6, marginTop: 12 }}>
                 <YesFilled style={{ color: '#32A645', fontSize: 16 }} />
-                <span className="text-sm font-medium text-[#1F2329]">平稳风险</span>
+                <span className="text-sm font-medium text-[#1F2329]">{tr('平稳风险')}</span>
               </div>
               <div className="grid grid-cols-2" style={{ gap: 16 }}>
                 {grouped.green.map((r) => (
@@ -345,8 +352,9 @@ function EditView({
   onClose: () => void;
   onSave: (targetStatus: RiskStatus, reason: string) => void;
 }) {
+  const { t, tr } = useLocale();
   const currentStatus = getOverallStatus(riskType, calibration);
-  const displayName = RISK_DISPLAY_NAMES[riskType.id] || riskType.name;
+  const displayName = t(RISK_DISPLAY_NAMES[riskType.id] || riskType.name);
 
   const higherStatuses: RiskStatus[] = (['orange', 'red'] as RiskStatus[]).filter(
     (s) => STATUS_RANK[s] > STATUS_RANK[currentStatus],
@@ -361,13 +369,13 @@ function EditView({
 
   return (
     <>
-      <DialogHeader title={`校准 ${displayName}`} onBack={onBack} onClose={onClose} />
+      <DialogHeader title={`${tr('校准')} ${displayName}`} onBack={onBack} onClose={onClose} />
 
       <div className="flex-1 overflow-y-auto" style={{ padding: '0 24px', gap: 20, display: 'flex', flexDirection: 'column' }}>
         <IndicatorCard
           riskType={riskType}
           calibration={calibration}
-          actionSlot={<Button type="text" size="small" disabled>校准</Button>}
+          actionSlot={<Button type="text" size="small" disabled>{tr('校准')}</Button>}
         />
 
         {/* 原始状态 & 校准为 */}
@@ -394,7 +402,7 @@ function EditView({
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
               if (e.target.value.length <= maxLen) setReason(e.target.value);
             }}
-            placeholder="请输入校准原因"
+            placeholder={tr('请输入校准原因')}
             showCount maxLength={maxLen} rows={4}
             style={{ width: '100%' }}
           />
@@ -404,7 +412,7 @@ function EditView({
         <div className="flex flex-col shrink-0" style={{ gap: 12 }}>
           <div className="flex flex-col" style={{ gap: 2 }}>
             <FormLabel label="附件" />
-            <span className="text-sm text-[#8F959E] leading-[22px]">仅支持：JPG、PNG、PDF，大小不超过 10MB</span>
+            <span className="text-sm text-[#8F959E] leading-[22px]">{tr('仅支持：JPG、PNG、PDF，大小不超过 10MB')}</span>
           </div>
           <button
             type="button"
@@ -420,9 +428,9 @@ function EditView({
         className="flex items-center justify-end shrink-0"
         style={{ padding: 24, gap: 12, borderTop: '1px solid rgba(31,35,41,0.15)' }}
       >
-        <Button type="outlined" onClick={onBack}>取消</Button>
+        <Button type="outlined" onClick={onBack}>{tr('取消')}</Button>
         <Button type="primary" disabled={!canSubmit} onClick={() => { if (targetStatus && reason.trim()) onSave(targetStatus, reason.trim()); }}>
-          确定
+          {tr('确定')}
         </Button>
       </div>
     </>
@@ -448,11 +456,12 @@ function CalibrationDetailView({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { tr } = useLocale();
   const originalStatus = getNaturalStatus(riskType);
 
   return (
     <>
-      <DialogHeader title="校准详情" onBack={onBack} onClose={onClose} />
+      <DialogHeader title={tr('校准详情')} onBack={onBack} onClose={onClose} />
 
       <div className="flex-1 overflow-y-auto" style={{ padding: '0 24px', gap: 20, display: 'flex', flexDirection: 'column' }}>
         {/* Risk card (read-only, shows "人工校准" tag) */}
@@ -472,24 +481,24 @@ function CalibrationDetailView({
         <div className="flex flex-col shrink-0" style={{ gap: 2 }}>
           <FormLabel label="校准原因" />
           <p className="text-sm text-[#1F2329] leading-[22px]" style={{ wordBreak: 'break-all' }}>
-            {calibration.calibratedReason || '—'}
+            {calibration.calibratedReason ? tr(calibration.calibratedReason) : '—'}
           </p>
         </div>
 
         {/* 附件 (placeholder) */}
         <div className="flex flex-col shrink-0" style={{ gap: 2 }}>
           <FormLabel label="附件" />
-          <span className="text-sm text-[#8F959E] leading-[22px]">暂无附件</span>
+          <span className="text-sm text-[#8F959E] leading-[22px]">{tr('暂无附件')}</span>
         </div>
 
         {/* 校准人 & 校准时间 */}
         <div className="flex shrink-0" style={{ gap: 20 }}>
           <div className="flex-1 flex flex-col" style={{ gap: 4 }}>
-            <span className="text-sm text-[#646A73] leading-[22px]">校准人</span>
-            <span className="text-sm text-[#1F2329] leading-[22px]">李天天</span>
+            <span className="text-sm text-[#646A73] leading-[22px]">{tr('校准人')}</span>
+            <span className="text-sm text-[#1F2329] leading-[22px]">{tr('李天天')}</span>
           </div>
           <div className="flex-1 flex flex-col" style={{ gap: 4 }}>
-            <span className="text-sm text-[#646A73] leading-[22px]">校准时间</span>
+            <span className="text-sm text-[#646A73] leading-[22px]">{tr('校准时间')}</span>
             <span className="text-sm text-[#1F2329] leading-[22px]">{calibration.calibratedAt}</span>
           </div>
         </div>
@@ -500,8 +509,8 @@ function CalibrationDetailView({
         className="flex items-center justify-end shrink-0"
         style={{ padding: 24, gap: 12, borderTop: '1px solid rgba(31,35,41,0.15)' }}
       >
-        <Button type="outlined" onClick={onDelete}>删除校准</Button>
-        <Button type="outlined" color="primary" onClick={onEdit}>编辑校准</Button>
+        <Button type="outlined" onClick={onDelete}>{tr('删除校准')}</Button>
+        <Button type="outlined" color="primary" onClick={onEdit}>{tr('编辑校准')}</Button>
       </div>
     </>
   );

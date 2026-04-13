@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, Button, Tooltip } from '@universe-design/react';
+import { Menu, Button, Tooltip, Select } from '@universe-design/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useLocale } from '../i18n/LocaleContext';
 
 /** 侧栏占位项 hover 提示（收起态走 Menu.Item 内置 Tooltip；展开态需单独包一层，因 UD MenuItem 在展开时会关掉 Tooltip） */
 const DISABLED_NAV_TOOLTIP = '本期仅为占位，暂不可点击';
@@ -60,6 +61,7 @@ const SIDE_NAV_ITEMS: SideNavEntry[] = [
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { locale, setLocale, tr } = useLocale();
   // 根据路由判断是否在详情页
   const isDetailPage = location.pathname.startsWith('/workplace/');
   const [collapsed, setCollapsed] = useState(false);
@@ -68,8 +70,8 @@ export default function Layout() {
     <div className="h-screen bg-bg-body flex flex-col overflow-hidden">
       {/* Header */}
       <header className="h-[52px] bg-bg-overlay border-b border-divider-light flex items-center px-3 shrink-0 gap-2 z-20">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 flex items-center justify-center rounded-md text-text-caption">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="w-8 h-8 flex items-center justify-center rounded-md text-text-caption shrink-0">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <g clipPath="url(#clip0_572_26776)">
                 <path d="M21.4117 9.39258L9.48145 21.0135L12.0884 23.5763L21.4117 14.3414V9.39258Z" fill="#00BCFF"/>
@@ -83,8 +85,20 @@ export default function Layout() {
               </defs>
             </svg>
           </div>
+          <h1 className="text-[17px] font-semibold text-text-title tracking-tight cursor-pointer truncate" onClick={() => navigate('/')}>{tr('物理安全 Profile')}</h1>
         </div>
-        <h1 className="text-[17px] font-semibold text-text-title tracking-tight cursor-pointer" onClick={() => navigate('/')}>物理安全 Profile</h1>
+        <div className="shrink-0 flex items-center">
+          <Select
+            size="small"
+            value={locale}
+            onChange={(v) => setLocale(v === 'en' ? 'en' : 'zh')}
+            style={{ width: 112 }}
+            options={[
+              { label: tr('中文'), value: 'zh' },
+              { label: 'English', value: 'en' },
+            ]}
+          />
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -103,24 +117,24 @@ export default function Layout() {
             {SIDE_NAV_ITEMS.map((entry) =>
               entry.kind === 'enabled' ? (
                 <Menu.Item key={entry.key} icon={entry.icon}>
-                  {entry.label}
+                  {tr(entry.label)}
                 </Menu.Item>
               ) : (
                 <Menu.Item
                   key={entry.key}
                   disabled
-                  title={collapsed ? DISABLED_NAV_TOOLTIP : false}
+                  title={collapsed ? tr(DISABLED_NAV_TOOLTIP) : false}
                   icon={collapsed ? entry.icon : undefined}
                 >
                   {collapsed ? (
-                    entry.label
+                    tr(entry.label)
                   ) : (
-                    <Tooltip title={DISABLED_NAV_TOOLTIP} placement="right">
+                    <Tooltip title={tr(DISABLED_NAV_TOOLTIP)} placement="right">
                       <span className="flex w-full min-w-0 items-center gap-2">
                         <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-current [&>svg]:h-4 [&>svg]:w-4">
                           {entry.icon}
                         </span>
-                        <span className="min-w-0 flex-1">{entry.label}</span>
+                        <span className="min-w-0 flex-1">{tr(entry.label)}</span>
                       </span>
                     </Tooltip>
                   )}
@@ -136,7 +150,7 @@ export default function Layout() {
               onClick={() => setCollapsed(!collapsed)}
               icon={collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             >
-              {!collapsed && '收起'}
+              {!collapsed && tr('收起')}
             </Button>
           </div>
         </div>

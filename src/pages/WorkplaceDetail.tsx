@@ -9,15 +9,18 @@ import type {
 } from '../types';
 import { StatusBadge, SafetyStatusBadge, getAggregatedProgress } from '../components/StatusBadge';
 import { WORKPLACES } from '../mocks/workplaces';
+import { workplaceDisplayName } from '../utils/workplaceDisplayName';
 import { SAFETY_RISK_TYPES, RISK_TABS, RISK_TYPE_TO_RECTIFICATION_MAP, INITIAL_RISK_ASSESSMENT_DATA, INITIAL_OFFICE_INFO } from '../mocks/safetyData';
+import { INITIAL_RISK_ASSESSMENT_DATA_EN } from '../mocks/safetyDataEn';
 import { RECTIFICATION_DATA } from '../mocks/rectificationData';
 import RiskCalibrationModal from '../components/RiskCalibrationModal';
-
-
+import { useLocale } from '../i18n/LocaleContext';
+import { resolveRiskCategoryI18nKey } from '../i18n/riskTypeAlias';
 
 export default function WorkplaceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { tr, t, locale } = useLocale();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [activeRiskTab, setActiveRiskTab] = useState(0);
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
@@ -118,7 +121,7 @@ export default function WorkplaceDetail() {
       }
     });
     
-    return latestDate || '待定';
+    return latestDate || tr('待定');
   };
 
   const rectificationStats = calculateRectificationStats();
@@ -132,6 +135,10 @@ export default function WorkplaceDetail() {
 
   const [riskAssessmentData, setRiskAssessmentData] = useState<Record<string, RiskAssessmentData>>(INITIAL_RISK_ASSESSMENT_DATA);
   const [isRiskDrawerOpen, setIsRiskDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    setRiskAssessmentData(locale === 'en' ? INITIAL_RISK_ASSESSMENT_DATA_EN : INITIAL_RISK_ASSESSMENT_DATA);
+  }, [locale]);
   const [editingRiskTab, setEditingRiskTab] = useState<string>('');
   const [editingRiskFeatures, setEditingRiskFeatures] = useState('');
   const [editingProtectionMeasures, setEditingProtectionMeasures] = useState('');
@@ -204,7 +211,7 @@ export default function WorkplaceDetail() {
   };
 
   const insertLink = () => {
-    const url = prompt('请输入链接地址：');
+    const url = prompt(tr('请输入链接地址：'));
     if (url) {
       execCommand('createLink', url);
     }
@@ -271,7 +278,7 @@ export default function WorkplaceDetail() {
   };
 
   const deleteCalibration = (riskTypeId: string) => {
-    if (confirm('确定要删除该风险类型的人工校准吗？')) {
+    if (confirm(tr('确定要删除该风险类型的人工校准吗？'))) {
       setManualCalibrations(prev => {
         const newCalibrations = { ...prev };
         delete newCalibrations[riskTypeId];
@@ -488,6 +495,11 @@ export default function WorkplaceDetail() {
     };
   }, []);
 
+  const currentWorkplaceTitle = workplaceDisplayName(
+    currentWorkplace.city ? tr(currentWorkplace.city) : undefined,
+    tr(currentWorkplace.name),
+  );
+
   return (
     <div className="flex flex-col h-screen overflow-hidden font-sans relative">
       {/* Loading Overlay */}
@@ -501,7 +513,7 @@ export default function WorkplaceDetail() {
           >
             <div className="flex flex-col items-center gap-3">
               <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-              <p className="text-sm text-text-body">切换职场中...</p>
+              <p className="text-sm text-text-body">{tr('切换职场中...')}</p>
             </div>
           </motion.div>
         )}
@@ -515,9 +527,9 @@ export default function WorkplaceDetail() {
               {/* Breadcrumb */}
               <div className="w-full max-w-[1000px] mx-auto mt-[12px] mb-[12px]">
                 <div className="flex items-center text-sm text-text-caption">
-                  <span className="cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/')}>职场安全档案</span>
+                  <span className="cursor-pointer hover:text-primary transition-colors" onClick={() => navigate('/')}>{tr('职场安全档案')}</span>
                   <span className="mx-2">/</span>
-                  <span className="text-text-title font-medium">{currentWorkplace.name}</span>
+                  <span className="text-text-title font-medium">{currentWorkplaceTitle}</span>
                 </div>
               </div>
 
@@ -526,13 +538,13 @@ export default function WorkplaceDetail() {
                 <div className="relative z-10 p-4 pb-0">
                     <div className="flex items-center gap-4">
                        <img 
-                         src={`https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=现代化商业写字楼建筑外观&image_size=landscape_4_3`}
-                         alt={currentWorkplace.name}
+                         src={`https://copilot-cn.bytedance.net/api/ide/v1/text_to_image?prompt=${encodeURIComponent(locale === 'en' ? 'Modern commercial office building exterior' : '现代化商业写字楼建筑外观')}&image_size=landscape_4_3`}
+                         alt={currentWorkplaceTitle}
                          className="w-[72px] h-[72px] object-cover rounded-lg shrink-0"
                        />
                       <div className="flex-1">
                       <div className="flex items-center gap-2">
-                          <h2 className="font-semibold text-text-title" style={{ fontSize: '24px' }}>{currentWorkplace.name}</h2>
+                          <h2 className="font-semibold text-text-title" style={{ fontSize: '24px' }}>{currentWorkplaceTitle}</h2>
                         <Tag
                           color="error"
                           size="small"
@@ -542,25 +554,25 @@ export default function WorkplaceDetail() {
                             </svg>
                           }
                         >
-                          红灯
+                          {t('红灯')}
                         </Tag>
                       </div>
                       
                       <div className="flex flex-wrap items-center gap-y-2 mt-3">
                         <div className="text-text-caption text-sm">
-                          地址：{currentWorkplace.address}
+                          {tr('地址：')}{tr(currentWorkplace.address)}
                         </div>
                         <div className="w-[1px] h-3 bg-divider mx-2" />
                         <div className="text-text-caption text-sm">
-                          占地面积：{currentWorkplace.area} ㎡
+                          {tr('占地面积：')}{currentWorkplace.area} ㎡
                         </div>
                         <div className="w-[1px] h-3 bg-divider mx-2" />
                         <div className="text-text-caption text-sm">
-                          出入口数量：{currentWorkplace.entranceCount} 个
+                          {tr('出入口数量：')}{currentWorkplace.entranceCount}{tr('个')}
                         </div>
                         <div className="w-[1px] h-3 bg-divider mx-2" />
                         <div className="text-text-caption text-sm">
-                          可用工位数：{currentWorkplace.workstations} 个
+                          {tr('可用工位数：')}{currentWorkplace.workstations}{tr('个')}
                         </div>
                       </div>
                     </div>
@@ -577,7 +589,7 @@ export default function WorkplaceDetail() {
                           }`}
                           onClick={() => scrollToSection(tab)}
                         >
-                          <span>{tab === 'overview' ? '安全概况' : tab === 'rectification' ? '整改进度' : tab === 'risk' ? '风险评估' : '职场信息'}</span>
+                          <span>{tab === 'overview' ? tr('安全概况') : tab === 'rectification' ? tr('整改进度') : tab === 'risk' ? tr('风险评估') : tr('职场信息')}</span>
                           {activeTab === tab && (
                             <motion.div 
                               layoutId="activeTab"
@@ -612,7 +624,7 @@ export default function WorkplaceDetail() {
                           >
                             <path d="M11.4435 1.66707C10.802 0.555963 9.1982 0.555962 8.5567 1.66707L0.618234 15.8337C-0.0232666 16.9448 0.778607 18.3337 2.06161 18.3337H17.9387C19.2217 18.3337 20.0236 16.9448 19.3821 15.8337L11.4435 1.66707ZM8.95833 6.875C8.95833 6.52982 9.23816 6.25 9.58333 6.25H10.4167C10.7618 6.25 11.0417 6.52982 11.0417 6.875V11.875C11.0417 12.2202 10.7618 12.5 10.4167 12.5H9.58333C9.23816 12.5 8.95833 12.2202 8.95833 11.875V6.875ZM8.95833 13.9583C8.95833 13.6132 9.23816 13.3333 9.58333 13.3333H10.4167C10.7618 13.3333 11.0417 13.6132 11.0417 13.9583V14.7917C11.0417 15.1368 10.7618 15.4167 10.4167 15.4167H9.58333C9.23816 15.4167 8.95833 15.1368 8.95833 14.7917V13.9583Z" fill="#F54A45"/>
                           </svg>
-                          <span className="text-lg text-red-600" style={{ marginLeft: '8px', lineHeight: '1', verticalAlign: 'middle', fontWeight: '700', fontSize: '16px' }}>2 项指标需关注</span>
+                          <span className="text-lg text-red-600" style={{ marginLeft: '8px', lineHeight: '1', verticalAlign: 'middle', fontWeight: '700', fontSize: '16px' }}>{tr('2 项指标需关注')}</span>
                         </div>
                         <Button 
                           onClick={openCalibrationDrawer}
@@ -626,7 +638,7 @@ export default function WorkplaceDetail() {
                             </svg>
                           }
                         >
-                          校准
+                          {tr('校准')}
                         </Button>
                       </div>
                     </div>
@@ -654,9 +666,9 @@ export default function WorkplaceDetail() {
                                     <circle cx="4" cy="4" r="4" fill={index === 1 ? '#FF811A' : '#E22E28'}/>
                                   </svg>
                                   <span className="text-sm font-semibold text-text-title">
-                                    {riskType.name}
+                                    {tr(riskType.name)}
                                   </span>
-                                  {calibration && <Tag size="small" color="neutral">人工校准</Tag>}
+                                  {calibration && <Tag size="small" color="neutral">{tr('人工校准')}</Tag>}
                                 </div>
                               </div>
                               <div style={{ height: 0.5, backgroundColor: '#DEE0E3' }} />
@@ -665,7 +677,7 @@ export default function WorkplaceDetail() {
                                   {indicators.map((indicator, idx) => {
                                     return (
                                       <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
-                                        <span className="text-text-caption flex-1 truncate">{indicator.label}</span>
+                                        <span className="text-text-caption flex-1 truncate">{tr(indicator.label)}</span>
                                         <div className="flex items-center gap-2 flex-shrink-0" style={{ width: '80px' }}>
                                           {indicator.status === 'green' ? (
                                             <svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -681,7 +693,7 @@ export default function WorkplaceDetail() {
                                             </svg>
                                           )}
                                           <span className="text-text-body font-medium whitespace-nowrap">
-                                            {indicator.value}
+                                            {tr(indicator.value)}
                                           </span>
                                         </div>
                                       </div>
@@ -689,15 +701,20 @@ export default function WorkplaceDetail() {
                                   })}
                                 </div>
                               </div>
-                              {(index === 0 || index === 2) && (
+                              {calibration?.calibratedReason && (
                                 <div className="bg-[#f8f9fa] p-3 mx-3 rounded-lg mb-3">
                                   <p className="text-xs text-text-caption">
-                                    校准原因：近期地铁改造,导致出入口人流激增,高峰期尾随情况加剧,但保安无法逐一甄别。
+                                    {tr('校准原因：')}
+                                    {tr(calibration.calibratedReason)}
                                   </p>
                                 </div>
                               )}
                               <div className="bg-white p-3 border-t flex items-center justify-between mt-auto" style={{ borderColor: '#f3f4f6' }}>
-                                <span className="text-xs text-text-caption">{rectificationCount} 项整改任务</span>
+                                <span className="text-xs text-text-caption">
+                                  {locale === 'en'
+                                    ? `${rectificationCount} rectification tasks`
+                                    : `${rectificationCount} 项整改任务`}
+                                </span>
                                 <Button 
                                   type="text"
                                   color="primary"
@@ -705,7 +722,7 @@ export default function WorkplaceDetail() {
                                   onClick={() => handleViewRectification(riskType.name)}
                                   style={{ padding: 0 }}
                                 >
-                                  查看
+                                  {tr('查看')}
                                 </Button>
                               </div>
                             </div>
@@ -720,7 +737,7 @@ export default function WorkplaceDetail() {
                           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M0.833252 9.99998C0.833252 15.0625 4.93742 19.1666 9.99992 19.1666C15.0624 19.1666 19.1666 15.0625 19.1666 9.99998C19.1666 4.93748 15.0624 0.833313 9.99992 0.833313C4.93742 0.833313 0.833252 4.93748 0.833252 9.99998ZM13.162 7.7713C13.4847 7.44854 14.0095 7.4568 14.3322 7.77964C14.6548 8.10248 14.6631 8.62729 14.3402 8.94997C12.7678 10.5216 11.194 12.092 9.62369 13.6657C9.29783 13.9923 8.76869 13.9923 8.44274 13.6658C7.62218 12.8439 6.80034 12.0232 5.97887 11.2021C5.65654 10.88 5.66611 10.3557 5.98819 10.0333C6.31028 9.71087 6.83449 9.70124 7.15675 10.0235L9.03326 11.9L13.162 7.7713Z" fill="#32A645"/>
                           </svg>
-                          <span className="text-sm font-medium" style={{ color: '#258832', fontSize: '16px' }}>5 项指标运行平稳</span>
+                          <span className="text-sm font-medium" style={{ color: '#258832', fontSize: '16px' }}>{tr('5 项指标运行平稳')}</span>
                         </div>
                         <Button 
                           type="text"
@@ -729,7 +746,7 @@ export default function WorkplaceDetail() {
                           endIcon={<ChevronDown size={14} className={`transition-transform ${showStableDetails ? 'rotate-180' : ''}`} />}
                           style={{ padding: 0 }}
                         >
-                          {showStableDetails ? '收起详情' : '查看详情'}
+                          {showStableDetails ? tr('收起详情') : tr('查看详情')}
                         </Button>
                       </div>
                       {showStableDetails && (
@@ -750,7 +767,7 @@ export default function WorkplaceDetail() {
                                           <circle cx="4" cy="4" r="4" fill="#32A645"/>
                                         </svg>
                                         <span className="text-sm font-medium text-text-title">
-                                          {riskType.name}{calibration && '（人工校准）'}
+                                          {tr(riskType.name)}{calibration && tr('（人工校准）')}
                                         </span>
                                       </div>
                                   </div>
@@ -761,7 +778,7 @@ export default function WorkplaceDetail() {
                                   {indicators.map((indicator, idx) => {
                                     return (
                                       <div key={idx} className="flex items-center text-xs gap-4 pr-3" style={{ paddingLeft: 0, paddingRight: 0 }}>
-                                        <span className="text-text-caption flex-1 truncate">{indicator.label}</span>
+                                        <span className="text-text-caption flex-1 truncate">{tr(indicator.label)}</span>
                                         <div className="flex items-center gap-1.5 flex-shrink-0">
                                           <span className="text-text-body font-medium flex items-center gap-1.5" style={{ width: '80px' }}>
                                             {indicator.status === 'green' ? (
@@ -777,7 +794,7 @@ export default function WorkplaceDetail() {
                                                 <circle cx="4" cy="4" r="4" fill="#E8921C"/>
                                               </svg>
                                             )}
-                                            <span className="whitespace-nowrap">{indicator.value}</span>
+                                            <span className="whitespace-nowrap">{tr(indicator.value)}</span>
                                           </span>
                                         </div>
                                       </div>
@@ -799,7 +816,7 @@ export default function WorkplaceDetail() {
                 {/* Rectification Progress Card */}
                 <section id="card-rectification" ref={rectificationRef} className="bg-bg-overlay rounded-xl border border-divider-light overflow-hidden">
                   <div className="pt-4 px-4 pb-0">
-                    <h3 className="text-base font-medium text-text-title">整改任务</h3>
+                    <h3 className="text-base font-medium text-text-title">{tr('整改任务')}</h3>
                   </div>
                   {/* Status Tabs and Table Container */}
                   <div className="mx-4 mt-4 mb-4">
@@ -813,7 +830,7 @@ export default function WorkplaceDetail() {
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
-                        全部
+                        {tr('全部')}
                         <span className="ml-1 text-xs">{rectificationStats.total}</span>
                       </button>
                       <button
@@ -824,7 +841,7 @@ export default function WorkplaceDetail() {
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
-                        进行中
+                        {tr('进行中')}
                         <span className="ml-1 text-xs">{rectificationStats.pending}</span>
                       </button>
                       <button
@@ -835,7 +852,7 @@ export default function WorkplaceDetail() {
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
-                        验收中
+                        {tr('验收中')}
                         <span className="ml-1 text-xs">{rectificationStats.accepting}</span>
                       </button>
                       <button
@@ -846,7 +863,7 @@ export default function WorkplaceDetail() {
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
-                        已完成
+                        {tr('已完成')}
                         <span className="ml-1 text-xs">{rectificationStats.completed}</span>
                       </button>
                       <button
@@ -857,7 +874,7 @@ export default function WorkplaceDetail() {
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                       >
-                        已逾期
+                        {tr('已逾期')}
                         <span className={`ml-1 text-xs ${selectedRectificationFilter === 'overdue' ? 'text-red-600' : ''}`}>
                           {rectificationStats.overdue}
                         </span>
@@ -872,13 +889,13 @@ export default function WorkplaceDetail() {
                         <table className="w-full border-collapse whitespace-nowrap">
                         <thead>
                           <tr className="border-b border-divider">
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">任务名称</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改前安全状态</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider" style={{ maxWidth: '200px' }}>整改方案</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改状态</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改责任人</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">计划完成时间</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">整改完成时间</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">{tr('任务名称')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">{tr('整改前安全状态')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider" style={{ maxWidth: '200px' }}>{tr('整改方案')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">{tr('整改状态')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">{tr('整改责任人')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">{tr('计划完成时间')}</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-text-caption uppercase tracking-wider">{tr('整改完成时间')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -899,7 +916,7 @@ export default function WorkplaceDetail() {
                                       onClick={() => openTaskDetail(row)}
                                       style={{ padding: 0 }}
                                     >
-                                      {row.type}-{row.ticketNumber}
+                                      {row.type ? `${t(resolveRiskCategoryI18nKey(row.type))}-${row.ticketNumber}` : row.ticketNumber}
                                     </Button>
                                   </div>
                                 </td>
@@ -938,12 +955,12 @@ export default function WorkplaceDetail() {
                                       </Button>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-text-body"></td>
-                                    <td className="px-4 py-3 text-sm text-text-body" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{child.solution}</td>
+                                    <td className="px-4 py-3 text-sm text-text-body" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tr(child.solution)}</td>
                                     <td className="px-4 py-3 text-sm text-text-body"><StatusBadge type={child.progress} /></td>
                                     <td className="px-4 py-3 text-sm text-text-body">
                                       <div className="flex items-center gap-1.5">
                                         <Users size={14} className="text-text-caption" />
-                                        {child.owner}
+                                        {child.owner ? tr(child.owner) : ''}
                                       </div>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-text-body cursor-pointer hover:text-primary">{child.planDate}</td>
@@ -965,7 +982,7 @@ export default function WorkplaceDetail() {
                 {/* Risk Assessment Card */}
                 <section id="card-risk" ref={riskRef} className="bg-bg-overlay rounded-xl border border-divider-light overflow-hidden">
                   <div className="p-4 flex items-center justify-between">
-                    <h3 className="text-base font-medium text-text-title">风险评估</h3>
+                    <h3 className="text-base font-medium text-text-title">{tr('风险评估')}</h3>
                     <Button 
                       onClick={() => openRiskDrawer(riskTabs[activeRiskTab])}
                       type="outlined"
@@ -978,7 +995,7 @@ export default function WorkplaceDetail() {
                         </svg>
                       }
                     >
-                      编辑
+                      {tr('编辑')}
                     </Button>
                   </div>
 
@@ -994,13 +1011,13 @@ export default function WorkplaceDetail() {
                           </linearGradient>
                         </defs>
                       </svg>
-                      <span className="text-sm font-bold text-text-title">AI 总结</span>
+                      <span className="text-sm font-bold text-text-title">{tr('AI 总结')}</span>
                     </div>
                     <p className="text-sm text-text-body leading-relaxed">
-                      大钟寺办公区当前呈现开放园区与商业混合运营特征，整体风险主要集中在出入、消防、客诉和人身安全四类：出入口多且部分临近商业区，外部人员误入、尾随和强行闯入压力较高；高层带中庭、地下餐饮和车库充电场景并存，消防风险叠加、处置容错低；因外部被识别为 "总部"，客诉、滞留和舆情暴露相对突出；外围停车及接驳点分散，周边突发医疗事件响应时效仍偏弱。
+                      {tr('大钟寺办公区当前呈现开放园区与商业混合运营特征，整体风险主要集中在出入、消防、客诉和人身安全四类：出入口多且部分临近商业区，外部人员误入、尾随和强行闯入压力较高；高层带中庭、地下餐饮和车库充电场景并存，消防风险叠加、处置容错低；因外部被识别为 "总部"，客诉、滞留和舆情暴露相对突出；外围停车及接驳点分散，周边突发医疗事件响应时效仍偏弱。')}
                     </p>
                     <p className="text-sm text-text-body leading-relaxed mt-3">
-                      目前已形成人防、技防、联动处置并行的基础防护体系：出入侧配置门禁闸机、3472 路监控及固定岗 / 巡岗，客诉侧配有兼职客诉岗、防暴力量和舆情联动机制，消防侧具备 24 小时中控、微消队和较完整消防系统，SOS 侧已部署 AED/FAK 及持证急救安保。当前更需关注无值守及临商业出入口的持续补强，以及园区外围医疗响应效率提升。
+                      {tr('目前已形成人防、技防、联动处置并行的基础防护体系：出入侧配置门禁闸机、3472 路监控及固定岗 / 巡岗，客诉侧配有兼职客诉岗、防暴力量和舆情联动机制，消防侧具备 24 小时中控、微消队和较完整消防系统，SOS 侧已部署 AED/FAK 及持证急救安保。当前更需关注无值守及临商业出入口的持续补强，以及园区外围医疗响应效率提升。')}
                     </p>
                   </div>
 
@@ -1018,7 +1035,7 @@ export default function WorkplaceDetail() {
                               : 'text-text-body hover:text-text-body border-y border-l border-transparent'
                           }`}
                         >
-                          {tab}
+                          {tr(tab)}
                         </div>
                       ))}
                     </div>
@@ -1031,16 +1048,16 @@ export default function WorkplaceDetail() {
                         if (!data) return null;
                         return (
                           <div>
-                            <h4 className="text-base font-medium text-text-title mb-2">{data.name}</h4>
-                            <p className="text-sm text-text-caption mb-6">更新时间：{data.updateTime}</p>
+                            <h4 className="text-base font-medium text-text-title mb-2">{tr(data.name)}</h4>
+                            <p className="text-sm text-text-caption mb-6">{tr('更新时间：')}{data.updateTime}</p>
 
                             <div className="mb-8">
-                              <h5 className="text-sm font-medium text-text-title mb-3">风险特征</h5>
+                              <h5 className="text-sm font-medium text-text-title mb-3">{tr('风险特征')}</h5>
                               <div dangerouslySetInnerHTML={{ __html: data.riskFeatures }} />
                             </div>
 
                             <div>
-                              <h5 className="text-sm font-medium text-text-title mb-3">防护手段</h5>
+                              <h5 className="text-sm font-medium text-text-title mb-3">{tr('防护手段')}</h5>
                               <div dangerouslySetInnerHTML={{ __html: data.protectionMeasures }} />
                             </div>
                           </div>
@@ -1054,7 +1071,7 @@ export default function WorkplaceDetail() {
                 <section id="card-office" ref={officeRef} className="bg-bg-overlay rounded-xl border border-divider-light overflow-hidden">
                   <div className="p-5">
                     <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-base font-medium text-text-title">职场信息</h3>
+                      <h3 className="text-base font-medium text-text-title">{tr('职场信息')}</h3>
                       {hasEditPermission && (
                         <Button 
                           onClick={openOfficeDrawer}
@@ -1068,88 +1085,88 @@ export default function WorkplaceDetail() {
                             </svg>
                           }
                         >
-                          编辑
+                          {tr('编辑')}
                         </Button>
                       )}
                     </div>
                     
                     <div className="mb-7">
-                      <h4 className="text-sm font-medium text-text-title mb-4">基础信息</h4>
+                      <h4 className="text-sm font-medium text-text-title mb-4">{tr('基础信息')}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div className="space-y-4">
                           <div>
-                            <p className="text-sm text-text-caption mb-1">建成年份</p>
-                            <p className="text-sm text-text-title">{officeInfo.builtYear} 年建成</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('建成年份')}</p>
+                            <p className="text-sm text-text-title">{officeInfo.builtYear}{tr('年')}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-text-caption mb-1">办公室入住时间</p>
-                            <p className="text-sm text-text-title">{officeInfo.moveInDate} 入住</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('办公室入住时间')}</p>
+                            <p className="text-sm text-text-title">{officeInfo.moveInDate}{tr(' 入住')}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-text-caption mb-1">自持园区/租赁职场</p>
-                            <p className="text-sm text-text-title">{officeInfo.propertyType}</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('自持园区/租赁职场')}</p>
+                            <p className="text-sm text-text-title">{tr(officeInfo.propertyType)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-text-caption mb-1">用途</p>
-                            <p className="text-sm text-text-title">{officeInfo.usage}</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('用途')}</p>
+                            <p className="text-sm text-text-title">{tr(officeInfo.usage)}</p>
                           </div>
                         </div>
                         
                         <div className="space-y-4">
                           <div>
-                            <p className="text-sm text-text-caption mb-1">租赁面积</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('租赁面积')}</p>
                             <p className="text-sm text-text-title">{officeInfo.rentalArea} m²</p>
                           </div>
                           <div>
-                            <p className="text-sm text-text-caption mb-1">大物业面积</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('大物业面积')}</p>
                             <p className="text-sm text-text-title">{officeInfo.totalArea} m²</p>
                           </div>
                           <div>
-                            <p className="text-sm text-text-caption mb-1">楼栋/楼层说明</p>
-                            <p className="text-sm text-text-title">{officeInfo.buildingInfo}</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('楼栋/楼层说明')}</p>
+                            <p className="text-sm text-text-title">{tr(officeInfo.buildingInfo)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-text-caption mb-1">出入口数</p>
-                            <p className="text-sm text-text-title">{officeInfo.entranceCount} 个出入口</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('出入口数')}</p>
+                            <p className="text-sm text-text-title">{tr(`${officeInfo.entranceCount} 个出入口`)}</p>
                           </div>
                         </div>
                         
                         <div className="space-y-4">
                           <div>
-                            <p className="text-sm text-text-caption mb-1">是否挂有字节Logo</p>
-                            <p className="text-sm text-text-title">{officeInfo.hasByteLogo}</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('是否挂有字节Logo')}</p>
+                            <p className="text-sm text-text-title">{tr(officeInfo.hasByteLogo)}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-text-caption mb-1">扩租/缩租/退租规划</p>
-                            <p className="text-sm text-text-title">{officeInfo.expansionPlan}</p>
+                            <p className="text-sm text-text-caption mb-1">{tr('扩租/缩租/退租规划')}</p>
+                            <p className="text-sm text-text-title">{tr(officeInfo.expansionPlan)}</p>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     <div className="mb-7">
-                      <h4 className="text-sm font-medium text-text-title mb-4">人员分布</h4>
+                      <h4 className="text-sm font-medium text-text-title mb-4">{tr('人员分布')}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div>
-                          <p className="text-sm text-text-caption mb-1">可用工位数</p>
-                          <p className="text-sm text-text-title">12,345 个可用工位</p>
+                          <p className="text-sm text-text-caption mb-1">{tr('可用工位数')}</p>
+                          <p className="text-sm text-text-title">{tr('12,345 个可用工位')}</p>
                         </div>
                         <div>
-                          <p className="text-sm text-text-caption mb-1">月均访客数</p>
-                          <p className="text-sm text-text-title">8,560 人</p>
+                          <p className="text-sm text-text-caption mb-1">{tr('月均访客数')}</p>
+                          <p className="text-sm text-text-title">{tr('8,560 人')}</p>
                         </div>
                         <div>
-                          <p className="text-sm text-text-caption mb-1">主要入住一级部门</p>
+                          <p className="text-sm text-text-caption mb-1">{tr('主要入住一级部门')}</p>
                           <div className="group relative">
-                            <p className="text-sm text-text-title">效率与安全部、商业化、基础架构</p>
+                            <p className="text-sm text-text-title">{tr('效率与安全部、商业化、基础架构')}</p>
                             <div className="hidden group-hover:block absolute left-0 top-full mt-1 p-3 bg-white border border-divider-light rounded-lg shadow-lg z-20 min-w-[200px]">
-                              <p className="text-sm text-text-caption mb-2">全量入驻一级部门：</p>
+                              <p className="text-sm text-text-caption mb-2">{tr('全量入驻一级部门：')}</p>
                               <div className="space-y-1">
-                                <p className="text-xs text-text-body">效率与安全部：4,500个工位</p>
-                                <p className="text-xs text-text-body">商业化：3,200个工位</p>
-                                <p className="text-xs text-text-body">基础架构：2,100个工位</p>
-                                <p className="text-xs text-text-body">抖音电商：1,545个工位</p>
-                                <p className="text-xs text-text-body">火山引擎：1,000个工位</p>
+                                <p className="text-xs text-text-body">{tr('效率与安全部：4,500个工位')}</p>
+                                <p className="text-xs text-text-body">{tr('商业化：3,200个工位')}</p>
+                                <p className="text-xs text-text-body">{tr('基础架构：2,100个工位')}</p>
+                                <p className="text-xs text-text-body">{tr('抖音电商：1,545个工位')}</p>
+                                <p className="text-xs text-text-body">{tr('火山引擎：1,000个工位')}</p>
                               </div>
                             </div>
                           </div>
@@ -1158,18 +1175,18 @@ export default function WorkplaceDetail() {
                     </div>
 
                     <div className="mb-7">
-                      <h4 className="text-sm font-medium text-text-title mb-4">特殊空间</h4>
+                      <h4 className="text-sm font-medium text-text-title mb-4">{tr('特殊空间')}</h4>
                       <div className="flex flex-wrap gap-2">
                         {['实验室', 'EMDF机房', 'IDF机房', '开火厨房', '储藏室'].map((tag, idx) => (
                           <span key={idx} className="px-3 py-1 bg-primary/10 text-text-body rounded-full text-xs font-medium">
-                            {tag}
+                            {tr(tag)}
                           </span>
                         ))}
                       </div>
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-bold text-text-title mb-4">应急资源</h4>
+                      <h4 className="text-sm font-bold text-text-title mb-4">{tr('应急资源')}</h4>
                       
                       {[
                         { key: 'fireStations', label: '周边消防队', data: officeInfo.emergencyResources.fireStations },
@@ -1185,7 +1202,7 @@ export default function WorkplaceDetail() {
                               )}
                               className="w-full flex items-center justify-between p-3 bg-bg-content-base rounded-lg hover:bg-ud-hover transition-colors"
                             >
-                              <span className="text-sm font-medium text-text-title">{label}</span>
+                              <span className="text-sm font-medium text-text-title">{tr(label)}</span>
                               <ChevronDown 
                                 size={16} 
                                 className={`text-text-body transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
@@ -1196,24 +1213,24 @@ export default function WorkplaceDetail() {
                                 {data.map(item => (
                                   <div key={item.id} className="border border-divider-light rounded-lg overflow-hidden">
                                     <div className="bg-bg-content-base px-3 py-3 border-b border-divider-light">
-                                      <h6 className="text-sm font-bold text-text-title">{item.name}</h6>
+                                      <h6 className="text-sm font-bold text-text-title">{tr(item.name)}</h6>
                                     </div>
                                     <div className="p-3 space-y-2">
                                       <div className="flex items-start gap-2">
-                                        <span className="text-sm text-text-caption shrink-0">距离：</span>
+                                        <span className="text-sm text-text-caption shrink-0">{tr('距离：')}</span>
                                         <span className="text-sm text-text-body">{item.distance} km</span>
                                       </div>
                                       <div className="flex items-start gap-2">
-                                        <span className="text-sm text-text-caption shrink-0">地址：</span>
-                                        <span className="text-sm text-text-body">{item.address}</span>
+                                        <span className="text-sm text-text-caption shrink-0">{tr('地址：')}</span>
+                                        <span className="text-sm text-text-body">{tr(item.address)}</span>
                                       </div>
                                       <div className="flex items-start gap-2">
-                                        <span className="text-sm text-text-caption shrink-0">电话：</span>
+                                        <span className="text-sm text-text-caption shrink-0">{tr('电话：')}</span>
                                         <span className="text-sm text-text-body">{item.phone}</span>
                                       </div>
                                       <div className="flex items-start gap-2">
-                                        <span className="text-sm text-text-caption shrink-0">车程：</span>
-                                        <span className="text-sm text-text-body">预估车程 {item.driveTime} 分钟</span>
+                                        <span className="text-sm text-text-caption shrink-0">{tr('车程：')}</span>
+                                        <span className="text-sm text-text-body">{tr(`预估车程 ${item.driveTime} 分钟`)}</span>
                                       </div>
                                     </div>
                                   </div>
@@ -1253,27 +1270,27 @@ export default function WorkplaceDetail() {
               >
                 {/* Drawer Header */}
                 <div className="flex items-center justify-between p-4 border-b border-divider-light">
-                  <h2 className="text-lg font-bold text-text-title">编辑风险评估</h2>
+                  <h2 className="text-lg font-bold text-text-title">{tr('编辑风险评估')}</h2>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setIsRiskDrawerOpen(false)}
                       className="px-4 py-2 text-sm text-text-body hover:bg-divider-light rounded-lg transition-colors"
                     >
-                      取消
+                      {tr('取消')}
                     </button>
                     <button
                       onClick={saveRiskAssessment}
                       className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
                       style={{ color: '#ffffff' }}
                     >
-                      保存
+                      {tr('保存')}
                     </button>
                   </div>
                 </div>
 
                 {/* Risk Type Selector */}
                 <div className="p-4 border-b border-divider-light">
-                  <label className="text-sm font-medium text-text-title mb-2 block">选择风险类型</label>
+                  <label className="text-sm font-medium text-text-title mb-2 block">{tr('选择风险类型')}</label>
                   <div className="flex flex-wrap gap-2">
                     {riskTabs.map((tab) => (
                       <button
@@ -1291,7 +1308,7 @@ export default function WorkplaceDetail() {
                         }`}
                         style={editingRiskTab === tab ? { backgroundColor: '#e0e9ff', color: '#1454f0' } : undefined}
                       >
-                        {tab}
+                        {tr(tab)}
                       </button>
                     ))}
                   </div>
@@ -1301,13 +1318,13 @@ export default function WorkplaceDetail() {
                 <div className="flex-1 overflow-y-auto p-4 space-y-6">
                   {/* Risk Features Editor */}
                   <div>
-                    <h3 className="text-sm font-bold text-text-title mb-3">风险特征</h3>
+                    <h3 className="text-sm font-bold text-text-title mb-3">{tr('风险特征')}</h3>
                     {/* Toolbar */}
                     <div className="flex flex-wrap gap-1 p-2 bg-bg-content-base rounded-t-lg border border-divider-light border-b-0">
                       <button
                         onClick={() => execCommand('bold')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="加粗"
+                        title={tr('加粗')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
@@ -1317,7 +1334,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={() => execCommand('italic')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="斜体"
+                        title={tr('斜体')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <line x1="19" y1="4" x2="10" y2="4" />
@@ -1328,7 +1345,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={() => execCommand('underline')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="下划线"
+                        title={tr('下划线')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
@@ -1339,7 +1356,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={() => execCommand('insertUnorderedList')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="无序列表"
+                        title={tr('无序列表')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <line x1="8" y1="6" x2="21" y2="6" />
@@ -1353,7 +1370,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={() => execCommand('insertOrderedList')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="有序列表"
+                        title={tr('有序列表')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <line x1="10" y1="6" x2="21" y2="6" />
@@ -1368,7 +1385,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={insertLink}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="插入链接"
+                        title={tr('插入链接')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -1388,13 +1405,13 @@ export default function WorkplaceDetail() {
 
                   {/* Protection Measures Editor */}
                   <div>
-                    <h3 className="text-sm font-bold text-text-title mb-3">防护手段</h3>
+                    <h3 className="text-sm font-bold text-text-title mb-3">{tr('防护手段')}</h3>
                     {/* Toolbar */}
                     <div className="flex flex-wrap gap-1 p-2 bg-bg-content-base rounded-t-lg border border-divider-light border-b-0">
                       <button
                         onClick={() => execCommand('bold')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="加粗"
+                        title={tr('加粗')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
@@ -1404,7 +1421,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={() => execCommand('italic')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="斜体"
+                        title={tr('斜体')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <line x1="19" y1="4" x2="10" y2="4" />
@@ -1415,7 +1432,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={() => execCommand('underline')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="下划线"
+                        title={tr('下划线')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
@@ -1426,7 +1443,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={() => execCommand('insertUnorderedList')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="无序列表"
+                        title={tr('无序列表')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <line x1="8" y1="6" x2="21" y2="6" />
@@ -1440,7 +1457,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={() => execCommand('insertOrderedList')}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="有序列表"
+                        title={tr('有序列表')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <line x1="10" y1="6" x2="21" y2="6" />
@@ -1455,7 +1472,7 @@ export default function WorkplaceDetail() {
                       <button
                         onClick={insertLink}
                         className="p-2 hover:bg-divider-light rounded transition-colors"
-                        title="插入链接"
+                        title={tr('插入链接')}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -1530,139 +1547,139 @@ export default function WorkplaceDetail() {
                 className="fixed right-0 top-0 h-full w-full sm:w-[600px] bg-bg-overlay z-50 shadow-xl flex flex-col"
               >
                 <div className="flex items-center justify-between p-4 border-b border-divider-light">
-                  <h2 className="text-lg font-bold text-text-title">编辑职场信息</h2>
+                  <h2 className="text-lg font-bold text-text-title">{tr('编辑职场信息')}</h2>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setIsOfficeDrawerOpen(false)}
                       className="px-4 py-2 text-sm text-text-body hover:text-text-title transition-colors"
                     >
-                      取消
+                      {tr('取消')}
                     </button>
                     <button
                       onClick={saveOfficeInfo}
                       className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
                     >
-                      保存
+                      {tr('保存')}
                     </button>
                   </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4">
                   <div className="mb-7">
-                    <h3 className="text-base font-bold text-text-title mb-4">基础信息</h3>
+                    <h3 className="text-base font-bold text-text-title mb-4">{tr('基础信息')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">建成年份</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('建成年份')}</label>
                         <input
                           type="text"
                           value={editingOfficeInfo.builtYear}
                           onChange={(e) => updateOfficeField('builtYear', e.target.value)}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          placeholder="如2015"
+                          placeholder={tr('如2015')}
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">办公室入住时间</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('办公室入住时间')}</label>
                         <input
                           type="text"
                           value={editingOfficeInfo.moveInDate}
                           onChange={(e) => updateOfficeField('moveInDate', e.target.value)}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          placeholder="如2018-05-20"
+                          placeholder={tr('如2018-05-20')}
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">自持园区/租赁职场</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('自持园区/租赁职场')}</label>
                         <select
                           value={editingOfficeInfo.propertyType}
                           onChange={(e) => updateOfficeField('propertyType', e.target.value as '自持' | '租赁')}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                         >
-                          <option value="自持">自持</option>
-                          <option value="租赁">租赁</option>
+                          <option value="自持">{tr('自持')}</option>
+                          <option value="租赁">{tr('租赁')}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">用途</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('用途')}</label>
                         <select
                           value={editingOfficeInfo.usage}
                           onChange={(e) => updateOfficeField('usage', e.target.value as '办公' | '商业' | '办公+商业')}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                         >
-                          <option value="办公">办公</option>
-                          <option value="商业">商业</option>
-                          <option value="办公+商业">办公+商业</option>
+                          <option value="办公">{tr('办公')}</option>
+                          <option value="商业">{tr('商业')}</option>
+                          <option value="办公+商业">{tr('办公+商业')}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">租赁面积 (m²)</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('租赁面积 (m²)')}</label>
                         <input
                           type="text"
                           value={editingOfficeInfo.rentalArea}
                           onChange={(e) => updateOfficeField('rentalArea', e.target.value)}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          placeholder="如32,250"
+                          placeholder={tr('如32,250')}
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">大物业面积 (m²)</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('大物业面积 (m²)')}</label>
                         <input
                           type="text"
                           value={editingOfficeInfo.totalArea}
                           onChange={(e) => updateOfficeField('totalArea', e.target.value)}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          placeholder="如45,000"
+                          placeholder={tr('如45,000')}
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">楼栋/楼层说明</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('楼栋/楼层说明')}</label>
                         <input
                           type="text"
                           value={editingOfficeInfo.buildingInfo}
                           onChange={(e) => updateOfficeField('buildingInfo', e.target.value)}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          placeholder="如C座1-20层，D座1-18层"
+                          placeholder={tr('如C座1-20层，D座1-18层')}
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">出入口数</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('出入口数')}</label>
                         <input
                           type="text"
                           value={editingOfficeInfo.entranceCount}
                           onChange={(e) => updateOfficeField('entranceCount', e.target.value)}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          placeholder="如199"
+                          placeholder={tr('如199')}
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">是否挂有字节Logo</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('是否挂有字节Logo')}</label>
                         <select
                           value={editingOfficeInfo.hasByteLogo}
                           onChange={(e) => updateOfficeField('hasByteLogo', e.target.value as '是' | '否')}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                         >
-                          <option value="是">是</option>
-                          <option value="否">否</option>
+                          <option value="是">{tr('是')}</option>
+                          <option value="否">{tr('否')}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-text-title mb-2 block">扩租/缩租/退租规划</label>
+                        <label className="text-sm font-medium text-text-title mb-2 block">{tr('扩租/缩租/退租规划')}</label>
                         <input
                           type="text"
                           value={editingOfficeInfo.expansionPlan}
                           onChange={(e) => updateOfficeField('expansionPlan', e.target.value)}
                           className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                          placeholder="如2026年Q3计划扩租B座5-8层"
+                          placeholder={tr('如2026年Q3计划扩租B座5-8层')}
                         />
                       </div>
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-text-title mb-4 pt-7">应急资源</h3>
+                      <h3 className="text-base font-bold text-text-title mb-4 pt-7">{tr('应急资源')}</h3>
                       
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-medium text-text-title">周边消防队</h4>
+                          <h4 className="text-sm font-medium text-text-title">{tr('周边消防队')}</h4>
                           <Button
                             onClick={() => addEmergencyResource('fireStations')}
                             type="outlined"
@@ -1674,7 +1691,7 @@ export default function WorkplaceDetail() {
                               </svg>
                             }
                           >
-                            新增
+                            {tr('新增')}
                           </Button>
                         </div>
                         <div className="space-y-3">
@@ -1692,53 +1709,53 @@ export default function WorkplaceDetail() {
                               </button>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-text-title mb-1 block">名称</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('名称')}</label>
                                   <input
                                     type="text"
                                     value={station.name}
                                     onChange={(e) => updateEmergencyResource('fireStations', station.id, 'name', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="消防队名称"
+                                    placeholder={tr('消防队名称')}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-text-title mb-1 block">距离 (km)</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('距离 (km)')}</label>
                                   <input
                                     type="text"
                                     value={station.distance}
                                     onChange={(e) => updateEmergencyResource('fireStations', station.id, 'distance', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="如1.2"
+                                    placeholder={tr('如1.2')}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-text-title mb-1 block">电话</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('电话')}</label>
                                   <input
                                     type="text"
                                     value={station.phone}
                                     onChange={(e) => updateEmergencyResource('fireStations', station.id, 'phone', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="电话号码"
+                                    placeholder={tr('电话号码')}
                                   />
                                 </div>
                                 <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-text-title mb-1 block">地址</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('地址')}</label>
                                   <input
                                     type="text"
                                     value={station.address}
                                     onChange={(e) => updateEmergencyResource('fireStations', station.id, 'address', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="详细地址"
+                                    placeholder={tr('详细地址')}
                                   />
                                 </div>
                                 <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-text-title mb-1 block">预估车程 (分钟)</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('预估车程 (分钟)')}</label>
                                   <input
                                     type="text"
                                     value={station.driveTime}
                                     onChange={(e) => updateEmergencyResource('fireStations', station.id, 'driveTime', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="如3 ～ 5"
+                                    placeholder={tr('如3 ～ 5')}
                                   />
                                 </div>
                               </div>
@@ -1749,7 +1766,7 @@ export default function WorkplaceDetail() {
 
                       <div className="mb-6">
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-medium text-text-title">周边医院</h4>
+                          <h4 className="text-sm font-medium text-text-title">{tr('周边医院')}</h4>
                           <Button
                             onClick={() => addEmergencyResource('hospitals')}
                             type="outlined"
@@ -1761,7 +1778,7 @@ export default function WorkplaceDetail() {
                               </svg>
                             }
                           >
-                            新增
+                            {tr('新增')}
                           </Button>
                         </div>
                         <div className="space-y-3">
@@ -1779,53 +1796,53 @@ export default function WorkplaceDetail() {
                               </button>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-text-title mb-1 block">名称</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('名称')}</label>
                                   <input
                                     type="text"
                                     value={hospital.name}
                                     onChange={(e) => updateEmergencyResource('hospitals', hospital.id, 'name', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="医院名称"
+                                    placeholder={tr('医院名称')}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-text-title mb-1 block">距离 (km)</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('距离 (km)')}</label>
                                   <input
                                     type="text"
                                     value={hospital.distance}
                                     onChange={(e) => updateEmergencyResource('hospitals', hospital.id, 'distance', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="如0.8"
+                                    placeholder={tr('如0.8')}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-text-title mb-1 block">电话</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('电话')}</label>
                                   <input
                                     type="text"
                                     value={hospital.phone}
                                     onChange={(e) => updateEmergencyResource('hospitals', hospital.id, 'phone', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="电话号码"
+                                    placeholder={tr('电话号码')}
                                   />
                                 </div>
                                 <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-text-title mb-1 block">地址</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('地址')}</label>
                                   <input
                                     type="text"
                                     value={hospital.address}
                                     onChange={(e) => updateEmergencyResource('hospitals', hospital.id, 'address', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="详细地址"
+                                    placeholder={tr('详细地址')}
                                   />
                                 </div>
                                 <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-text-title mb-1 block">预估车程 (分钟)</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('预估车程 (分钟)')}</label>
                                   <input
                                     type="text"
                                     value={hospital.driveTime}
                                     onChange={(e) => updateEmergencyResource('hospitals', hospital.id, 'driveTime', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="如2 ～ 4"
+                                    placeholder={tr('如2 ～ 4')}
                                   />
                                 </div>
                               </div>
@@ -1836,7 +1853,7 @@ export default function WorkplaceDetail() {
 
                       <div>
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-medium text-text-title">周边派出所</h4>
+                          <h4 className="text-sm font-medium text-text-title">{tr('周边派出所')}</h4>
                           <Button
                             onClick={() => addEmergencyResource('policeStations')}
                             type="outlined"
@@ -1848,7 +1865,7 @@ export default function WorkplaceDetail() {
                               </svg>
                             }
                           >
-                            新增
+                            {tr('新增')}
                           </Button>
                         </div>
                         <div className="space-y-3">
@@ -1866,53 +1883,53 @@ export default function WorkplaceDetail() {
                               </button>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-text-title mb-1 block">名称</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('名称')}</label>
                                   <input
                                     type="text"
                                     value={station.name}
                                     onChange={(e) => updateEmergencyResource('policeStations', station.id, 'name', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="派出所名称"
+                                    placeholder={tr('派出所名称')}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-text-title mb-1 block">距离 (km)</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('距离 (km)')}</label>
                                   <input
                                     type="text"
                                     value={station.distance}
                                     onChange={(e) => updateEmergencyResource('policeStations', station.id, 'distance', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="如0.6"
+                                    placeholder={tr('如0.6')}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs font-medium text-text-title mb-1 block">电话</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('电话')}</label>
                                   <input
                                     type="text"
                                     value={station.phone}
                                     onChange={(e) => updateEmergencyResource('policeStations', station.id, 'phone', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="电话号码"
+                                    placeholder={tr('电话号码')}
                                   />
                                 </div>
                                 <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-text-title mb-1 block">地址</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('地址')}</label>
                                   <input
                                     type="text"
                                     value={station.address}
                                     onChange={(e) => updateEmergencyResource('policeStations', station.id, 'address', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="详细地址"
+                                    placeholder={tr('详细地址')}
                                   />
                                 </div>
                                 <div className="md:col-span-2">
-                                  <label className="text-xs font-medium text-text-title mb-1 block">预估车程 (分钟)</label>
+                                  <label className="text-xs font-medium text-text-title mb-1 block">{tr('预估车程 (分钟)')}</label>
                                   <input
                                     type="text"
                                     value={station.driveTime}
                                     onChange={(e) => updateEmergencyResource('policeStations', station.id, 'driveTime', e.target.value)}
                                     className="w-full px-3 py-2 border border-divider-light rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                    placeholder="如2 ～ 3"
+                                    placeholder={tr('如2 ～ 3')}
                                   />
                                 </div>
                               </div>
@@ -1947,7 +1964,7 @@ export default function WorkplaceDetail() {
                 className="fixed right-0 top-0 bottom-0 w-full max-w-[600px] bg-white z-50 shadow-2xl"
               >
                 <div className="flex items-center justify-between p-4 border-b border-divider">
-                  <h3 className="text-lg font-semibold text-text-title">切换职场</h3>
+                  <h3 className="text-lg font-semibold text-text-title">{tr('切换职场')}</h3>
                   <button
                     onClick={() => setIsWorkplaceDrawerOpen(false)}
                     className="p-2 hover:bg-bg-content-base rounded-lg transition-colors"
@@ -1978,18 +1995,18 @@ export default function WorkplaceDetail() {
                         }`}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium text-text-title">{workplace.name}</h4>
+                          <h4 className="font-medium text-text-title">{workplaceDisplayName(workplace.city ? tr(workplace.city) : undefined, tr(workplace.name))}</h4>
                           {currentWorkplace.id === workplace.id && (
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1456F0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M20 6 9 17l-5-5"></path>
                             </svg>
                           )}
                         </div>
-                        <p className="text-sm text-text-caption mb-2">地址：{workplace.address}</p>
+                        <p className="text-sm text-text-caption mb-2">{tr('地址：')}{tr(workplace.address)}</p>
                         <div className="flex flex-wrap gap-3 text-xs text-text-caption">
-                          <span>占地面积：{workplace.area} ㎡</span>
-                          <span>出入口：{workplace.entranceCount} 个</span>
-                          <span>工位数：{workplace.workstations} 个</span>
+                          <span>{tr('占地面积：')}{workplace.area} ㎡</span>
+                          <span>{tr('出入口：')}{workplace.entranceCount}{tr('个')}</span>
+                          <span>{tr('工位数：')}{workplace.workstations}{tr('个')}</span>
                         </div>
                       </div>
                     ))}
@@ -2022,7 +2039,7 @@ export default function WorkplaceDetail() {
               >
                 {/* 抽屉头部 */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">任务详情</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">{tr('任务详情')}</h2>
                   <button
                     onClick={() => setIsTaskDetailDrawerOpen(false)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -2039,15 +2056,15 @@ export default function WorkplaceDetail() {
                   {/* 基本信息 */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-500">工单号</span>
+                      <span className="text-sm font-medium text-gray-500">{tr('工单号')}</span>
                       <span className="text-sm text-gray-900 font-mono">{selectedTask.ticketNumber}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-500">风险类型</span>
-                      <span className="text-sm text-gray-900">{selectedTask.type || '-'}</span>
+                      <span className="text-sm font-medium text-gray-500">{tr('风险类型')}</span>
+                      <span className="text-sm text-gray-900">{selectedTask.type ? t(resolveRiskCategoryI18nKey(selectedTask.type)) : '-'}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-500">状态</span>
+                      <span className="text-sm font-medium text-gray-500">{tr('状态')}</span>
                       <div className="flex items-center gap-2">
                         <span className={`inline-block w-2 h-2 rounded-full ${
                           selectedTask.status === 'red' ? 'bg-red-500' :
@@ -2057,16 +2074,16 @@ export default function WorkplaceDetail() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-500">负责人</span>
-                      <span className="text-sm text-gray-900">{selectedTask.owner || '-'}</span>
+                      <span className="text-sm font-medium text-gray-500">{tr('负责人')}</span>
+                      <span className="text-sm text-gray-900">{selectedTask.owner ? tr(selectedTask.owner) : '-'}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-500">计划完成日期</span>
+                      <span className="text-sm font-medium text-gray-500">{tr('计划完成日期')}</span>
                       <span className="text-sm text-gray-900">{selectedTask.planDate || '-'}</span>
                     </div>
                     {(selectedTask.progress === 'overdue' || selectedTask.finishDate) && (
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-500">实际完成日期</span>
+                        <span className="text-sm font-medium text-gray-500">{tr('实际完成日期')}</span>
                         <span className="text-sm text-gray-900">
                           {selectedTask.progress === 'overdue' ? '-' : selectedTask.finishDate}
                         </span>
@@ -2078,9 +2095,9 @@ export default function WorkplaceDetail() {
 
                   {/* 问题分析 */}
                   <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-gray-900">问题分析</h3>
+                    <h3 className="text-sm font-medium text-gray-900">{tr('问题分析')}</h3>
                     <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm text-gray-700">{selectedTask.analysis}</p>
+                      <p className="text-sm text-gray-700">{tr(selectedTask.analysis)}</p>
                     </div>
                   </div>
 
@@ -2089,9 +2106,9 @@ export default function WorkplaceDetail() {
                     <>
                       <hr className="border-gray-200" />
                       <div className="space-y-3">
-                        <h3 className="text-sm font-medium text-gray-900">解决方案</h3>
+                        <h3 className="text-sm font-medium text-gray-900">{tr('解决方案')}</h3>
                         <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                          <p className="text-sm text-gray-700">{selectedTask.solution}</p>
+                          <p className="text-sm text-gray-700">{tr(selectedTask.solution)}</p>
                         </div>
                       </div>
                     </>
@@ -2102,7 +2119,7 @@ export default function WorkplaceDetail() {
                     <>
                       <hr className="border-gray-200" />
                       <div className="space-y-3">
-                        <h3 className="text-sm font-medium text-gray-900">子任务</h3>
+                        <h3 className="text-sm font-medium text-gray-900">{tr('子任务')}</h3>
                         <div className="space-y-3">
                           {selectedTask.children.map((child) => (
                             <div key={child.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
@@ -2110,15 +2127,15 @@ export default function WorkplaceDetail() {
                                 <span className="text-sm font-medium text-gray-900">{child.ticketNumber}</span>
                                 <StatusBadge type={child.progress} />
                               </div>
-                              <p className="text-sm text-gray-600">{child.analysis}</p>
+                              <p className="text-sm text-gray-600">{tr(child.analysis)}</p>
                               {child.solution && child.solution !== '-' && (
                                 <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
-                                  <span className="font-medium">方案：</span>{child.solution}
+                                  <span className="font-medium">{tr('方案：')}</span>{tr(child.solution)}
                                 </div>
                               )}
                               <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
-                                <span>负责人：{child.owner || '-'}</span>
-                                {child.planDate && <span>计划：{child.planDate}</span>}
+                                <span>{tr('负责人：')}{child.owner ? tr(child.owner) : '-'}</span>
+                                {child.planDate && <span>{tr('计划：')}{child.planDate}</span>}
                               </div>
                             </div>
                           ))}
